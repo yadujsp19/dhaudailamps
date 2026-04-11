@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <title>Loan Disbursement | LAMPS</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    <style>
+        :root { --primary: #1e293b; --accent: #6366f1; --success: #10b981; }
+        body { font-family: 'Segoe UI', Arial; background: #f1f5f9; padding: 20px; }
+        .filter-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; }
+        select, input, button { padding: 10px; border: 1px solid #ddd; border-radius: 8px; outline: none; }
+        .btn-fetch { background: var(--primary); color: white; cursor: pointer; font-weight: bold; border: none; }
+        .table-container { background: white; border-radius: 12px; overflow-x: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1200px; }
+        th { background: #f8fafc; padding: 12px; border-bottom: 2px solid #e2e8f0; text-align: center; }
+        td { padding: 12px; border-bottom: 1px solid #f1f5f9; text-align: center; }
+        
+        #save-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-box { background: white; padding: 25px; border-radius: 15px; width: 400px; box-shadow: 0 20px 25px rgba(0,0,0,0.1); }
+        .modal-box label { display: block; margin-top: 10px; font-weight: bold; }
+        .modal-box input { width: 100%; margin-top: 5px; background: #f8fafc; }
+        .btn-confirm { width: 100%; margin-top: 20px; background: var(--success); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="filter-card">
+        <div><label>फसल चुनें:</label><br>
+            <select id="f-crop">
+                <option value="धान">धान</option>
+                <option value="मक्का">मक्का</option>
+                <option value="गेहूं">गेहूं</option>
+                <option value="अन्य">अन्य फसल</option>
+            </select>
+        </div>
+        <div><label>ग्रुप फिल्टर:</label><br>
+            <select id="f-group">
+                <option value="all">सभी किसान</option>
+                <option value="आदिवासी 01">आदिवासी 01 (<= 2हे.)</option>
+                <option value="आदिवासी 02">आदिवासी 02 (> 2हे.)</option>
+                <option value="सामान्य 01">सामान्य 01 (<= 2हे.)</option>
+                <option value="सामान्य 02">सामान्य 02 (> 2हे.)</option>
+            </select>
+        </div>
+        <button class="btn-fetch" onclick="loadDisbursementData()">🔍 डेटा लोड करें</button>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>चुनें</th><th>दिनांक</th><th>खाता नंबर</th><th>नाम</th><th>ग्राम</th><th>रकबा</th><th>नगद</th><th>वस्तु</th><th>कुल ऋण</th><th>कैटेगरी</th>
+                </tr>
+            </thead>
+            <tbody id="data-body">
+                <tr><td colspan="10" style="padding:40px; color:gray;">कृपया फिल्टर चुनकर 'डेटा लोड करें' बटन दबाएं।</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="save-modal">
+        <div class="modal-box">
+            <h3>💾 रिपोर्ट सुरक्षित करें</h3>
+            <label>ग्रुप (Report Group) चुनें:</label>
+            <select id="m-report-name">
+                <option value="">-- चुनें --</option>
+                <script>for(let i=1;i<=30;i++) document.write(`<option value="Group ${i}">Group ${i}</option>`);</script>
+            </select>
+            <label>निर्धारित कैटेगरी:</label><input type="text" id="m-group" readonly>
+            <label>चुनी गई फसल:</label><input type="text" id="m-crop" readonly>
+            <button class="btn-confirm" onclick="finalSaveToDatabase()">डेटाबेस में सेव करें</button>
+            <button onclick="closeModal()" style="width:100%; margin-top:10px; border:none; background:none; cursor:pointer; color:gray;">रद्द करें</button>
+        </div>
+    </div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let tempReportData = [];
+
+    async function loadDisbursementData() {
+        const crop = document.getElementById('f-crop').value;
+        const groupFilter = document.getElementById('f-group').value;
+        const tbody = document.getElementById('data-body');
+        tbody.innerHTML = "<tr><td colspan='10'>डेटा प्रोसेस हो रहा है... कृपया प्रतीक्षा करें।</td></tr>";
+
+        try {
+            // Fetch Loans, Farmers, and Already Generated Reports
+            const loanSnap = await db.ref('lamps/loans').once('value');
+            const farmerSnap = await db.ref('lamps/farmers').once('value');
+            const reportSnap = await db.ref('lamps/generated_reports').once('value');
+            
+            if(!loanSnap.exists()) return tbody.innerHTML = "<tr><td colspan='10'>लोन का कोई डेटा नहीं मिला।</td></tr>";
+            
+            const loansObj = loanSnap.val();
+            const farmersObj = farmerSnap.val() || {};
+            const reportsObj = reportSnap.val() || {};
+
+            // Collect all account numbers already saved in reports
+            let processedAccs = new Set();
+            Object.values(reportsObj).forEach(report => {
+                if(report.items) {
+                    report.items.forEach(item => processedAccs.add(item.acc));
+                }
+            });
+
+            let allRows = [];
+            for (let acc in loansObj) {
+                // SKIP IF ALREADY IN REPORT.HTML ARCHIVE
+                if (processedAccs.has(acc)) continue;
+
+                const keys = Object.keys(loansObj[acc]);
+                const lastKey = keys[keys.length - 1];
+                const loan = loansObj[acc][lastKey];
+
+                if (loan.crop !== crop) continue;
+
+                const f = farmersObj[acc] || {};
+                const land = parseFloat(f.land_total) || 0;
+                let group = (f.cat === "ST") ? (land <= 2 ? "आदिवासी 01" : "आदिवासी 02") : (land <= 2 ? "सामान्य 01" : "सामान्य 02");
+
+                if (groupFilter !== "all" && groupFilter !== group) continue;
+
+                allRows.push({ ...loan, ...f, acc, group, ts: new Date(loan.date).getTime() || 0 });
+            }
+
+            allRows.sort((a, b) => a.ts - b.ts);
+            tbody.innerHTML = "";
+            if(allRows.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='10'>सभी किसानों की रिपोर्ट बन चुकी है या कोई रिकॉर्ड नहीं मिला।</td></tr>";
+                return;
+            }
+
+            allRows.forEach((d, index) => {
+                const totalLoan = parseFloat(d.cash_amt || 0) + parseFloat(d.kind_amt || 0);
+                tbody.innerHTML += `<tr>
+                    <td><input type="checkbox" class="row-check" data-idx="${index}"></td>
+                    <td>${d.date || '-'}</td>
+                    <td><b>${d.acc}</b></td>
+                    <td>${d.name}</td>
+                    <td>${d.vill || '-'}</td>
+                    <td>${d.land_total || 0}</td>
+                    <td>${d.cash_amt || 0}</td>
+                    <td>${d.kind_amt || 0}</td>
+                    <td><b>${totalLoan}</b></td>
+                    <td><span style="font-size:11px; font-weight:bold; color:var(--accent);">${d.group}</span></td>
+                </tr>`;
+            });
+
+            // Extra Logic: Select and Show Modal on Check
+            setTimeout(() => {
+                document.querySelectorAll('.row-check').forEach(cb => {
+                    cb.onchange = () => {
+                        if(cb.checked) {
+                            const data = allRows[cb.dataset.idx];
+                            document.getElementById('m-group').value = data.group;
+                            document.getElementById('m-crop').value = data.crop;
+                            document.getElementById('save-modal').style.display = "flex";
+                        }
+                    }
+                });
+            }, 500);
+
+            tempReportData = allRows;
+
+        } catch (error) {
+            tbody.innerHTML = "<tr><td colspan='10'>Error: " + error.message + "</td></tr>";
+        }
+    }
+
+    function closeModal() { 
+        document.getElementById('save-modal').style.display = "none"; 
+        document.querySelectorAll('.row-check').forEach(c => c.checked = false); 
+    }
+
+    async function finalSaveToDatabase() {
+        const reportName = document.getElementById('m-report-name').value;
+        if(!reportName) return swal("अधूरा डेटा", "कृपया Group No चुनें!", "warning");
+        
+        const checkboxes = document.querySelectorAll('.row-check');
+        const selectedItems = [];
+
+        checkboxes.forEach((cb) => {
+            if(cb.checked) {
+                const item = tempReportData[cb.dataset.idx];
+                const cashVal = parseFloat(item.cash_amt) || 0;
+                const kindVal = parseFloat(item.kind_amt) || 0;
+                const shareVal = Math.round(cashVal * 0.10);
+
+                selectedItems.push({
+                    acc: item.acc, name: item.name, fname: item.fname || "-",
+                    vill: item.vill || "-", land: item.land_total || 0,
+                    cash: cashVal, kind: kindVal, total: cashVal + kindVal,
+                    share: shareVal, net: cashVal - shareVal, caste: item.cat || "-"
+                });
+            }
+        });
+
+        if(selectedItems.length === 0) return swal("Error", "कोई किसान नहीं चुना गया!", "error");
+
+        const timestamp = Date.now();
+        await db.ref('lamps/generated_reports/' + timestamp).set({
+            report_name: reportName,
+            group_name: document.getElementById('m-group').value,
+            gen_date: new Date().toLocaleDateString('hi-IN'),
+            crop_name: document.getElementById('m-crop').value,
+            items: selectedItems,
+            timestamp: timestamp
+        });
+
+        swal("सफलता", "रिपोर्ट सुरक्षित कर दी गई है! अब यह किसान लिस्ट से हट जाएगा।", "success");
+        closeModal();
+        loadDisbursementData(); 
+    }
+</script>
+</body>
+</html>

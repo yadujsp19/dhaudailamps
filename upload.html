@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload Data | LAMPS</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+
+    <style>
+        :root { --primary: #0f172a; --accent: #6366f1; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; padding: 30px; }
+        .upload-card { background: white; max-width: 600px; margin: auto; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; }
+        .drop-zone { border: 2px dashed #cbd5e1; padding: 40px; border-radius: 10px; cursor: pointer; transition: 0.3s; margin-bottom: 20px; }
+        .drop-zone:hover { border-color: var(--accent); background: #f8fafc; }
+        .btn-upload { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; }
+        .btn-upload:disabled { background: #94a3b8; }
+        .info-text { font-size: 13px; color: #64748b; margin-top: 15px; text-align: left; }
+        #file-info { margin-top: 10px; font-weight: bold; color: #059669; }
+    </style>
+</head>
+<body>
+
+<div class="upload-card">
+    <h2 style="margin-top:0; color:var(--primary);">📤 Excel डेटा अपलोड करें</h2>
+    <p>अपनी एक्सेल फाइल चुनें और डेटाबेस में सिंक करें</p>
+
+    <div class="drop-zone" onclick="document.getElementById('excelFile').click()">
+        <p id="file-name">फाइल यहाँ ड्रैग करें या क्लिक करके चुनें</p>
+        <input type="file" id="excelFile" hidden accept=".xlsx, .xls" onchange="handleFile(this)">
+    </div>
+
+    <div id="file-info"></div>
+
+    <button id="uploadBtn" class="btn-upload" disabled onclick="processAndUpload()">डेटाबेस में सेव करें</button>
+
+    <div class="info-text">
+        <b>💡 निर्देश:</b>
+        <ul>
+            <li>फाइल <b>.xlsx</b> फॉर्मेट में होनी चाहिए।</li>
+            <li>कॉलम के नाम (Header) आपके डेटाबेस से मिलने चाहिए (जैसे: Name, ACC, Vill)।</li>
+            <li>अपलोड करने से पहले फाइल को अच्छी तरह चेक कर लें।</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let jsonData = null;
+
+    function handleFile(input) {
+        const file = input.files[0];
+        if (file) {
+            document.getElementById('file-name').innerText = "चयनित फाइल: " + file.name;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Excel को JSON में बदलें
+                jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                document.getElementById('file-info').innerText = jsonData.length + " रिकॉर्ड्स पाए गए।";
+                document.getElementById('uploadBtn').disabled = false;
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    }
+
+    async function processAndUpload() {
+        if (!jsonData) return;
+        
+        const btn = document.getElementById('uploadBtn');
+        btn.innerText = "अपलोड हो रहा है...";
+        btn.disabled = true;
+
+        try {
+            // उदाहरण: मान लीजिये आप किसानों का डेटा अपलोड कर रहे हैं
+            // यहाँ आप path बदल सकते हैं जैसे 'lamps/farmers'
+            for (let item of jsonData) {
+                if (item.ACC) { // अगर Account No (ACC) को key बनाना है
+                    await db.ref('lamps/farmers/' + item.ACC).update(item);
+                } else {
+                    await db.ref('lamps/uploads').push(item);
+                }
+            }
+            
+            swal("सफलता", "डेटा सफलतापूर्वक अपलोड कर दिया गया है!", "success").then(() => {
+                location.reload();
+            });
+        } catch (error) {
+            swal("Error", "अपलोड विफल: " + error.message, "error");
+            btn.innerText = "डेटाबेस में सेव करें";
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>

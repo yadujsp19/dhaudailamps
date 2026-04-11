@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Report Management | LAMPS</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+
+    <style>
+        :root { --brand: #6366f1; --primary: #0f172a; --border: #e2e8f0; --text: #334155; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', 'Noto Sans Devanagari', sans-serif; background: #f1f5f9; padding: 20px; color: var(--text); }
+        .no-print-zone { max-width: 1100px; margin: auto; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .search-area { display: flex; gap: 10px; margin-bottom: 25px; justify-content: center; }
+        .search-area input { padding: 12px 20px; width: 350px; border: 2px solid var(--border); border-radius: 10px; outline: none; font-size: 16px; }
+        .table-container { width: 100%; overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+        table.records-table { width: 100%; border-collapse: collapse; background: white; }
+        table.records-table th, table.records-table td { padding: 14px; border-bottom: 1px solid var(--border); text-align: center; }
+        table.records-table th { background: #f8fafc; color: #64748b; font-size: 12px; }
+        .report-actions { display: none; gap: 10px; justify-content: center; margin: 20px 0; }
+
+        /* A4 Report Design */
+        #printable-content {
+            width: 210mm; min-height: 297mm; padding: 15mm; margin: 30px auto;
+            background: white; border: 1px solid #d1d5db; display: none; color: black;
+        }
+        .header { text-align: center; border-bottom: 3px double black; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
+        .section-title { background: #f3f4f6; padding: 5px 10px; border-left: 5px solid black; margin: 15px 0 10px; font-weight: bold; }
+        .info-grid { width: 100%; border-collapse: collapse; }
+        .info-grid td { padding: 8px; border: 1px solid #000; font-size: 13px; }
+        .label { font-weight: bold; background: #f9f9f9; }
+        .items-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .items-table th, .items-table td { border: 1px solid black; padding: 8px; text-align: center; font-size: 13px; }
+        
+        .total-box { margin-top: 15px; border: 2px solid black; padding: 15px; }
+        .total-row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 15px; font-weight: bold; }
+        .highlight-net { color: #059669; font-size: 17px; border-top: 1.5px solid #000; padding-top: 8px; margin-top: 5px; }
+
+        .signature-section { margin-top: 60px; display: flex; justify-content: space-between; }
+        .sig-box { width: 200px; border-top: 1px solid black; padding-top: 5px; font-weight: bold; text-align: center; font-size: 14px; }
+
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-main { background: var(--brand); color: white; }
+        .btn-pdf { background: #059669; color: white; }
+        .btn-close { background: #ef4444; color: white; }
+
+        @media print { 
+            .no-print-zone, .report-actions { display: none !important; } 
+            #printable-content { display: block !important; margin: 0; border: none; padding: 10mm; } 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print-zone">
+        <div class="card">
+            <h2 style="text-align: center; color: var(--primary); margin-bottom: 25px;">📑 ऋण स्वीकृति एवं भुगतान प्रतिवेदन</h2>
+            <div class="search-area">
+                <input type="text" id="search_input" placeholder="खाता नंबर या नाम से खोजें..." onkeyup="filterTable()">
+                <button class="btn btn-main" onclick="location.reload()">🔄 रिफ्रेश लिस्ट</button>
+            </div>
+            <div class="table-container">
+                <table class="records-table">
+                    <thead>
+                        <tr><th>SNo</th><th>खाता नंबर</th><th>किसान का नाम</th><th>पिता का नाम</th><th>ग्राम</th><th>लोन स्टेटस</th><th>एक्शन</th></tr>
+                    </thead>
+                    <tbody id="listBody"><tr><td colspan="7">डेटा लोड हो रहा है...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="action-bar" class="report-actions">
+        <button class="btn btn-main" onclick="window.print()">🖨️ प्रिंट निकालें</button>
+        <button class="btn btn-pdf" id="downloadBtn">⬇️ PDF डाउनलोड</button>
+        <button class="btn btn-close" onclick="closeReport()">❌ बंद करें</button>
+    </div>
+
+    <div id="printable-content">
+        <div class="header">
+            <h1>आदिम जाति सेवा सहकारी समिति मर्यादित धौड़ाई</h1>
+            <p>जिला - नारायणपुर (छ.ग.) | ऋण स्वीकृति एवं मांग विवरण पत्र</p>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
+            <span>खाता क्रमांक: <span id="out_acc_top">---</span></span>
+            <span>दिनांक: <span id="out_date">---</span></span>
+        </div>
+
+        <div class="section-title">1. किसान एवं भूमि का विवरण</div>
+        <table class="info-grid">
+            <tr>
+                <td class="label">किसान का नाम:</td><td id="out_name">-</td>
+                <td class="label">पिता का नाम:</td><td id="out_fname">-</td>
+            </tr>
+            <tr>
+                <td class="label">ग्राम:</td><td id="out_vill">-</td>
+                <td class="label">कुल भूमि (हे.):</td><td id="out_land">0.00</td>
+            </tr>
+            <tr>
+                <td class="label">जाति / वर्ग:</td><td id="out_cat">-</td>
+                <td class="label">फसल / सत्र:</td><td id="out_crop">-</td>
+            </tr>
+        </table>
+
+        <div class="section-title">2. खाद एवं बीज मांग विवरण (वस्तु ऋण)</div>
+        <table class="items-table">
+            <thead>
+                <tr><th>क्र.</th><th>सामग्री विवरण</th><th>मात्रा (बोरी)</th><th>दर (₹)</th><th>कुल राशि (₹)</th></tr>
+            </thead>
+            <tbody id="out_items_body"></tbody>
+        </table>
+
+        <div class="section-title">3. स्वीकृत ऋण एवं भुगतान सारांश</div>
+        <div class="total-box">
+            <div class="total-row"><span>(A) स्वीकृत नगद ऋण राशि:</span> <span>₹ <span id="out_cash">0.00</span></span></div>
+            <div class="total-row" style="color: #ef4444; font-size: 14px; font-weight: normal;"><span>&nbsp;&nbsp;&nbsp;(-) हिस्सा राशि कटौती:</span> <span>₹ <span id="out_share">0.00</span></span></div>
+            <div class="total-row" style="color: #ef4444; font-size: 14px; font-weight: normal;"><span>&nbsp;&nbsp;&nbsp;(-) बीमा राशि कटौती:</span> <span>₹ <span id="out_ins">0.00</span></span></div>
+            
+            <div class="total-row highlight-net">
+                <span>शुद्ध नगद भुगतान राशि:</span> <span>₹ <span id="out_net">0.00</span></span>
+            </div>
+
+            <div class="total-row" style="margin-top:15px; border-top: 1px solid #ccc; padding-top: 10px;">
+                <span>(B) स्वीकृत वस्तु ऋण राशि:</span> <span>₹ <span id="out_kind">0.00</span></span>
+            </div>
+            
+            <div class="total-row" style="border-top: 2px solid black; margin-top: 10px; padding-top: 8px; font-size: 18px; background: #f9fafb;">
+                <span>कुल स्वीकृत ऋण (A+B):</span> <span>₹ <span id="out_total">0.00</span></span>
+            </div>
+        </div>
+
+        <div class="signature-section">
+            <div class="sig-box">किसान के हस्ताक्षर</div>
+            <div class="sig-box">समिति प्रबंधक</div>
+        </div>
+    </div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    window.onload = fetchMainData;
+
+    async function fetchMainData() {
+        const farmerSnap = await db.ref('lamps/farmers').once('value');
+        const loanSnap = await db.ref('lamps/loans').once('value');
+        const farmers = farmerSnap.val();
+        const loans = loanSnap.val() || {};
+        const tbody = document.getElementById('listBody');
+        tbody.innerHTML = "";
+        let sno = 1;
+
+        if(!farmers) return tbody.innerHTML = "<tr><td colspan='7'>डेटा नहीं मिला।</td></tr>";
+
+        Object.keys(farmers).forEach(acc => {
+            const f = farmers[acc];
+            const hasLoan = loans[acc] ? true : false;
+            const loanKey = hasLoan ? Object.keys(loans[acc]).pop() : null;
+
+            tbody.innerHTML += `<tr>
+                <td>${sno++}</td><td><b>${acc}</b></td><td>${f.name}</td><td>${f.fname || '-'}</td><td>${f.vill || '-'}</td>
+                <td><span style="color:${hasLoan?'#10b981':'#ef4444'}; font-weight:bold;">${hasLoan?'ऋण पूर्ण':'लंबित'}</span></td>
+                <td>${hasLoan ? `<button class="btn btn-main" onclick="renderReport('${acc}', '${loanKey}')">📄 रिपोर्ट देखें</button>` : '-'}</td>
+            </tr>`;
+        });
+    }
+
+    async function renderReport(acc, loanId) {
+        swal({ title: "रिपोर्ट तैयार हो रही है...", icon: "info", buttons: false });
+        const fSnap = await db.ref('lamps/farmers/' + acc).once('value');
+        const lSnap = await db.ref('lamps/loans/' + acc + '/' + loanId).once('value');
+
+        if(fSnap.exists() && lSnap.exists()) {
+            const f = fSnap.val(); const l = lSnap.val();
+            
+            document.getElementById('out_acc_top').innerText = acc;
+            document.getElementById('out_date').innerText = l.date || "---";
+            document.getElementById('out_name').innerText = f.name;
+            document.getElementById('out_fname').innerText = f.fname || '-';
+            document.getElementById('out_vill').innerText = f.vill || '-';
+            document.getElementById('out_land').innerText = f.land_total || '0.00';
+            document.getElementById('out_cat').innerText = f.cat || '-';
+            document.getElementById('out_crop').innerText = (l.crop || 'धान') + " (" + (l.season || '-') + ")";
+            
+            // Logic for Summary Table
+            const cash = parseFloat(l.cash_amt) || 0;
+            const kind = parseFloat(l.kind_amt) || 0;
+            const share = parseFloat(l.share_amt) || 0;
+            const ins = parseFloat(l.ins_amt) || 0;
+            const net = parseFloat(l.net_amt) || (cash - share - ins);
+
+            document.getElementById('out_cash').innerText = cash.toFixed(2);
+            document.getElementById('out_share').innerText = share.toFixed(2);
+            document.getElementById('out_ins').innerText = ins.toFixed(2);
+            document.getElementById('out_net').innerText = net.toFixed(2);
+            document.getElementById('out_kind').innerText = kind.toFixed(2);
+            document.getElementById('out_total').innerText = (cash + kind).toFixed(2);
+
+            // Item Table Rendering
+            const itemsTable = document.getElementById('out_items_body');
+            itemsTable.innerHTML = "";
+            const itemsList = l.items ? (Array.isArray(l.items) ? l.items : Object.values(l.items)) : [];
+            itemsList.forEach((item, i) => {
+                itemsTable.innerHTML += `<tr><td>${i+1}</td><td>${item.desc || '-'}</td><td>${item.qty}</td><td>${item.rate}</td><td>${item.total}</td></tr>`;
+            });
+
+            document.getElementById('printable-content').style.display = "block";
+            document.getElementById('action-bar').style.display = "flex";
+            document.getElementById('downloadBtn').onclick = () => downloadPDF(acc);
+            swal.close();
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+    }
+
+    function filterTable() {
+        const input = document.getElementById('search_input').value.toUpperCase();
+        document.querySelectorAll('#listBody tr').forEach(row => {
+            row.style.display = row.innerText.toUpperCase().includes(input) ? "" : "none";
+        });
+    }
+
+    function closeReport() {
+        document.getElementById('printable-content').style.display = "none";
+        document.getElementById('action-bar').style.display = "none";
+        window.scrollTo(0, 0);
+    }
+
+    function downloadPDF(acc) {
+        const { jsPDF } = window.jspdf;
+        html2canvas(document.getElementById('printable-content'), { scale: 2 }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const width = pdf.internal.pageSize.getWidth();
+            const height = (canvas.height * width) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, width, height);
+            pdf.save(`Loan_Report_${acc}.pdf`);
+        });
+    }
+</script>
+</body>
+</html>

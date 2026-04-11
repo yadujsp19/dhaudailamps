@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <title>Fertilizer & Seed Management | LAMPS</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    <style>
+        :root { --brand: #6366f1; --dark: #0f172a; --success: #10b981; --bg: #f1f5f9; }
+        body { font-family: 'Segoe UI', Arial; background: var(--bg); padding: 20px; margin: 0; }
+        .container { max-width: 1200px; margin: auto; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; background: white; padding: 10px; border-radius: 12px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; background: #eee; transition: 0.3s; }
+        .tab-btn.active { background: var(--brand); color: white; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: none; }
+        .card.active { display: block; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #666; }
+        input, select { width: 100%; padding: 10px; border: 1.5px solid #ddd; border-radius: 8px; outline: none; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; }
+        .btn-p { background: var(--brand); } .btn-s { background: var(--success); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background: #f8fafc; }
+        #voucher-print { width: 148mm; padding: 10mm; border: 1px solid #000; margin: 20px auto; display: none; background: white; color: black; }
+        @media print { .no-print { display: none !important; } #voucher-print { display: block !important; border: none; } body { background: white; } }
+    </style>
+</head>
+<body>
+
+<div class="container no-print">
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab('purchase', this)">🛒 Purchase (आवक)</button>
+        <button class="tab-btn" onclick="openTab('sales', this)">💰 Sales (वितरण)</button>
+        <button class="tab-btn" onclick="openTab('stock', this)">📊 Stock (भंडार)</button>
+    </div>
+
+    <div id="purchase" class="card active">
+        <h3>📦 स्टॉक आवक (Supplier Entry)</h3><br>
+        <div class="grid">
+            <div><label>सप्लायर</label><select id="p-supplier"><option>CG Markfed Narayanpur</option><option>CG Beej Nigam Kanker</option></select></div>
+            <div><label>कैटेगरी</label><select id="p-cat"><option>Fertilizer</option><option>Seeds</option></select></div>
+            <div><label>सामग्री</label><select id="p-item"><option>DAP</option><option>UREA</option><option>NPK</option><option>POTASH</option><option>SUPERPHOSPHATE</option><option>IR64</option><option>MTU1010</option></select></div>
+            <div><label>मात्रा (बोरी)</label><input type="number" id="p-qty" oninput="calcP()"></div>
+            <div><label>दर (Rate/Bag)</label><input type="number" id="p-rate" oninput="calcP()"></div>
+            <div><label>देय राशि</label><input type="number" id="p-net" readonly style="background:#f8fafc;"></div>
+        </div>
+        <button class="btn btn-p" onclick="processPurchase()">📥 स्टॉक में जोड़ें</button>
+    </div>
+
+    <div id="sales" class="card">
+        <h3>💸 किसान खाद-बीज वितरण (Loan Based)</h3>
+        <div class="search-area" style="display:flex; gap:10px; margin:15px 0; background:#eef2ff; padding:15px; border-radius:10px;">
+            <input type="text" id="s-search-acc" placeholder="किसान खाता नंबर दर्ज करें...">
+            <button class="btn btn-p" onclick="fetchLoanData()">🔍 डेटा प्राप्त करें</button>
+        </div>
+
+        <div id="farmer-display" style="display:none; background:#f0fdf4; padding:15px; border-radius:10px; margin-bottom:20px; border:1px solid #bbf7d0;">
+            <div class="grid">
+                <div><label>किसान का नाम</label><input type="text" id="s-name" readonly></div>
+                <div><label>पिता का नाम</label><input type="text" id="s-fname" readonly></div>
+                <div><label>ग्राम</label><input type="text" id="s-vill" readonly></div>
+                <div><label>मोबाइल</label><input type="text" id="s-mob" readonly></div>
+            </div>
+            <h4 style="margin:10px 0; color:#166534;">📋 डेटाबेस के अनुसार मांग विवरण (Items Requested)</h4>
+            <table id="requested-items-table" style="background:white;">
+                <thead><tr><th>सामग्री</th><th>मात्रा (बोरी)</th><th>दर</th><th>कुल राशि</th><th>वितरण मात्रा</th></tr></thead>
+                <tbody id="req-body"></tbody>
+            </table>
+            <button class="btn btn-s" style="width:100%; margin-top:15px;" onclick="saveSalesAndPrint()">💾 बिक्री सुरक्षित करें एवं वाउचर प्रिंट करें</button>
+        </div>
+    </div>
+
+    <div id="stock" class="card">
+        <h3>📊 वर्तमान स्टॉक एवं ओपनिंग</h3>
+        <table>
+            <thead><tr><th>सामग्री</th><th>Opening</th><th>आवक (In)</th><th>निकासी (Out)</th><th>शेष स्टॉक</th></tr></thead>
+            <tbody id="stock-table"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="voucher-print">
+    <center><h2>आदिम जाति सेवा सहकारी समिति धौड़ाई</h2><p>खाद-बीज वितरण पावती</p></center>
+    <hr>
+    <div style="display:flex; justify-content:space-between; font-size:14px;">
+        <div><b>खाता:</b> <span id="v-acc"></span><br><b>नाम:</b> <span id="v-name"></span></div>
+        <div><b>दिनांक:</b> <span id="v-date"></span><br><b>ग्राम:</b> <span id="v-vill"></span></div>
+    </div>
+    <table style="width:100%; margin-top:15px; border:1px solid #000; border-collapse:collapse;">
+        <thead><tr><th style="border:1px solid #000;">विवरण</th><th style="border:1px solid #000;">मात्रा</th><th style="border:1px solid #000;">दर</th><th style="border:1px solid #000;">कुल राशि</th></tr></thead>
+        <tbody id="v-body"></tbody>
+    </table>
+    <div style="text-align:right; margin-top:10px; font-weight:bold;">कुल योग: ₹ <span id="v-total"></span></div>
+    <div style="margin-top:50px; display:flex; justify-content:space-between;"><span>किसान के हस्ताक्षर</span><span>प्रबंधक/लिपिक</span></div>
+</div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let fetchedLoanItems = [];
+
+    function openTab(id, btn) {
+        document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        btn.classList.add('active');
+        if(id === 'stock') loadStock();
+    }
+
+    function calcP() {
+        let q = document.getElementById('p-qty').value || 0;
+        let r = document.getElementById('p-rate').value || 0;
+        document.getElementById('p-net').value = q * r;
+    }
+
+    async function processPurchase() {
+        const item = document.getElementById('p-item').value;
+        const qty = parseFloat(document.getElementById('p-qty').value) || 0;
+        const rate = parseFloat(document.getElementById('p-rate').value) || 0;
+        if(qty <= 0) return swal("Error", "मात्रा दर्ज करें", "warning");
+
+        const ref = db.ref('lamps/inventory/' + item);
+        const snap = await ref.once('value');
+        let data = snap.val() || { total_in: 0, total_out: 0, opening: 0 };
+        await ref.update({ total_in: (data.total_in || 0) + qty, rate: rate });
+        swal("सफलता", "स्टॉक जोड़ दिया गया", "success").then(() => location.reload());
+    }
+
+    async function fetchLoanData() {
+        const acc = document.getElementById('s-search-acc').value.trim();
+        if(!acc) return swal("Error", "खाता नंबर लिखें", "warning");
+
+        const loanSnap = await db.ref('lamps/loans/' + acc).once('value');
+        const farmerSnap = await db.ref('lamps/farmers/' + acc).once('value');
+
+        if(loanSnap.exists() && farmerSnap.exists()) {
+            const f = farmerSnap.val();
+            const loans = loanSnap.val();
+            const lastKey = Object.keys(loans).pop();
+            const loan = loans[lastKey];
+
+            document.getElementById('s-name').value = f.name;
+            document.getElementById('s-fname').value = f.fname || '-';
+            document.getElementById('s-vill').value = f.vill || '-';
+            document.getElementById('s-mob').value = f.mobile || '-';
+            
+            const reqBody = document.getElementById('req-body');
+            reqBody.innerHTML = "";
+            fetchedLoanItems = loan.items || [];
+
+            fetchedLoanItems.forEach((it, idx) => {
+                reqBody.innerHTML += `<tr>
+                    <td>${it.desc || it.item}</td>
+                    <td>${it.qty}</td>
+                    <td>${it.rate}</td>
+                    <td>${it.total}</td>
+                    <td><input type="number" class="v-qty" value="${it.qty}" data-idx="${idx}" style="width:70px;"></td>
+                </tr>`;
+            });
+            document.getElementById('farmer-display').style.display = "block";
+        } else { swal("Error", "इस खाते का लोन डेटा नहीं मिला", "error"); }
+    }
+
+    async function saveSalesAndPrint() {
+        const acc = document.getElementById('s-search-acc').value;
+        const vQtys = document.querySelectorAll('.v-qty');
+        let finalSales = [];
+        let grandTotal = 0;
+
+        for (let input of vQtys) {
+            const idx = input.dataset.idx;
+            const qty = parseFloat(input.value) || 0;
+            if(qty > 0) {
+                const itemData = fetchedLoanItems[idx];
+                const total = qty * itemData.rate;
+                finalSales.push({ item: itemData.desc || itemData.item, qty, rate: itemData.rate, total });
+                grandTotal += total;
+
+                // Update Stock
+                const invRef = db.ref('lamps/inventory/' + (itemData.desc || itemData.item));
+                const snap = await invRef.once('value');
+                const inv = snap.val() || { total_out: 0 };
+                await invRef.update({ total_out: (inv.total_out || 0) + qty });
+            }
+        }
+
+        if(finalSales.length === 0) return swal("Error", "वितरण मात्रा 0 नहीं हो सकती", "warning");
+
+        // Save Sales Record
+        await db.ref('lamps/fertilizer_sales').push({
+            acc, name: document.getElementById('s-name').value,
+            date: new Date().toLocaleDateString('hi-IN'),
+            items: finalSales, total: grandTotal
+        });
+
+        // Setup Printing
+        document.getElementById('v-acc').innerText = acc;
+        document.getElementById('v-name').innerText = document.getElementById('s-name').value;
+        document.getElementById('v-vill').innerText = document.getElementById('s-vill').value;
+        document.getElementById('v-date').innerText = new Date().toLocaleDateString('hi-IN');
+        document.getElementById('v-total').innerText = grandTotal;
+        
+        let vBody = document.getElementById('v-body');
+        vBody.innerHTML = "";
+        finalSales.forEach(s => {
+            vBody.innerHTML += `<tr><td style="border:1px solid #000;">${s.item}</td><td style="border:1px solid #000;">${s.qty}</td><td style="border:1px solid #000;">${s.rate}</td><td style="border:1px solid #000;">${s.total}</td></tr>`;
+        });
+
+        swal("सफलता", "बिक्री दर्ज हो गयी है। वाउचर प्रिंट करें।", "success").then(() => window.print());
+    }
+
+    async function loadStock() {
+        const snap = await db.ref('lamps/inventory').once('value');
+        const tbody = document.getElementById('stock-table');
+        tbody.innerHTML = "";
+        if(snap.exists()) {
+            const data = snap.val();
+            Object.keys(data).forEach(k => {
+                const item = data[k];
+                const bal = (parseFloat(item.opening) || 0) + (item.total_in || 0) - (item.total_out || 0);
+                tbody.innerHTML += `<tr>
+                    <td><b>${k}</b></td>
+                    <td><input type="number" value="${item.opening || 0}" onchange="updateOpening('${k}', this.value)" style="width:80px;"></td>
+                    <td>${item.total_in || 0}</td>
+                    <td>${item.total_out || 0}</td>
+                    <td style="font-weight:bold; color:${bal < 10 ? 'red' : 'green'};">${bal}</td>
+                </tr>`;
+            });
+        }
+    }
+
+    async function updateOpening(item, val) {
+        await db.ref('lamps/inventory/' + item).update({ opening: parseFloat(val) });
+        swal("Updated", "ओपनिंग स्टॉक अपडेट हुआ", "success");
+    }
+</script>
+</body>
+</html>

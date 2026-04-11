@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <title>Loan Distribution Report - A4 Format</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { margin: 0; padding: 0; background: white; }
+            .report-card { box-shadow: none; border: none; width: 100%; max-width: 100%; margin: 0; padding: 10mm; }
+        }
+        
+        body { font-family: 'Times New Roman', serif; background: #f0f2f5; padding: 10px; }
+        .report-card { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 210mm; min-height: 297mm; margin: auto; box-sizing: border-box; }
+        
+        h2, h3, h4 { text-align: center; margin: 2px; text-transform: uppercase; }
+        .header-box { margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 9.5pt; table-layout: fixed; }
+        th, td { border: 1px solid black; padding: 4px; text-align: center; overflow: hidden; }
+        
+        .bg-gray { background-color: #f2f2f2; font-weight: bold; }
+        .grand-total { background-color: #e5e7eb; font-weight: bold; }
+        
+        input { width: 95%; border: none; text-align: center; font-family: inherit; font-size: inherit; background: transparent; }
+        input:focus { outline: 1px solid #1e40af; background: #fff; }
+
+        .section-title { background: #eee; padding: 5px; font-weight: bold; border: 1px solid #000; margin-top: 15px; font-size: 10pt; }
+        .btn-container { text-align: center; margin-bottom: 15px; }
+        .btn-sync { padding: 8px 16px; background: #1e40af; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="btn-container no-print">
+    <button class="btn-sync" onclick="syncData()">🔄 Data Load Karein / Reset</button>
+    <button class="btn-sync" style="background:#059669;" onclick="window.print()">🖨️ Print (A4)</button>
+</div>
+
+<div class="report-card">
+    <div class="header-box">
+        <h2>जिला सहकारी केन्द्रीय बैंक मर्यादित, जगदलपुर</h2>
+        <h3>आदिम जाति सेवा सहकारी समिति मर्यादित, धौड़ाई</h3>
+        <h4>ऋण वितरण गोशवारा खरीफ वर्ष 2024-25</h4>
+        <p style="text-align:center; font-size: 10pt;">दिनांक: <input type="text" id="report-date" value="20-05-2025" style="width:100px; border-bottom:1px solid #000;"></p>
+    </div>
+
+    <div class="section-title">1. वर्गवार सारांश (नगद एवं वस्तु ऋण वितरण)</div>
+    <table id="summaryTable">
+        <thead>
+            <tr class="bg-gray">
+                <th rowspan="2" style="width:30px;">क्र.</th>
+                <th rowspan="2">वर्ग</th>
+                <th rowspan="2" style="width:40px;">सदस्य</th>
+                <th rowspan="2" style="width:45px;">रकबा</th>
+                <th colspan="3">स्वीकृत साख सीमा</th>
+                <th colspan="3">आहरित राशि</th>
+                <th rowspan="2">हिस्सा</th>
+                <th rowspan="2">भुगतान</th>
+                <th rowspan="2" style="width:85px;">खाता क्रमांक</th>
+            </tr>
+            <tr class="bg-gray">
+                <th>नगद</th><th>वस्तु</th><th>योग</th>
+                <th>नगद</th><th>वस्तु</th><th>योग</th>
+            </tr>
+        </thead>
+        <tbody id="summaryBody">
+            </tbody>
+    </table>
+
+    <div class="section-title">2. परिशिष्ट-1: अन्य विवरण एवं वसूली समायोजन</div>
+    <table id="detailTable">
+        <thead>
+            <tr class="bg-gray">
+                <th>क्र.</th>
+                <th>विवरण</th>
+                <th>गत वर्ष की बकाया</th>
+                <th>वर्तमान वितरण</th>
+                <th>वसूल योग्य</th>
+                <th>खाद/बीज मात्रा (MT)</th>
+                <th>बीमा प्रीमियम</th>
+                <th>टिप्पणी</th>
+            </tr>
+        </thead>
+        <tbody id="detailBody">
+            <tr>
+                <td>1</td><td>आदिवासी कृषक</td>
+                <td><input type="number" value="0"></td><td><input type="number" value="0" id="dt-adv-dist"></td>
+                <td><input type="number" value="0"></td><td><input type="text" value="0.00"></td>
+                <td><input type="number" value="0"></td><td><input type="text" placeholder="..."></td>
+            </tr>
+            <tr>
+                <td>2</td><td>सामान्य कृषक</td>
+                <td><input type="number" value="0"></td><td><input type="number" value="0" id="dt-gen-dist"></td>
+                <td><input type="number" value="0"></td><td><input type="text" value="0.00"></td>
+                <td><input type="number" value="0"></td><td><input type="text" placeholder="..."></td>
+            </tr>
+            <tr class="grand-total">
+                <td colspan="2">कुल योग</td>
+                <td><input type="number" value="0"></td>
+                <td><input type="number" value="0" id="dt-total-dist"></td>
+                <td><input type="number" value="0"></td>
+                <td><input type="text" value="0.00"></td>
+                <td><input type="number" value="0"></td>
+                <td>-</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top: 50px; display: flex; justify-content: space-between; font-weight: bold; font-size: 10pt;">
+        <p>प्रबंधक के हस्ताक्षर</p>
+        <p>अध्यक्ष/प्राधिकृत अधिकारी</p>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Default groups for editable mode
+    const defaultGroups = {
+        "आदिवासी 01": { acc: "105004642778", m:0, r:0, cl:0, kl:0, cd:0, kd:0, s:0 },
+        "आदिवासी 02": { acc: "105004642789", m:0, r:0, cl:0, kl:0, cd:0, kd:0, s:0 },
+        "सामान्य 01": { acc: "105004642734", m:0, r:0, cl:0, kl:0, cd:0, kd:0, s:0 },
+        "सामान्य 02": { acc: "105004642745", m:0, r:0, cl:0, kl:0, cd:0, kd:0, s:0 }
+    };
+
+    function syncData() {
+        db.ref('lamps/generated_reports').once('value', (snapshot) => {
+            const data = snapshot.exists() ? snapshot.val() : null;
+            renderTables(data);
+        });
+    }
+
+    function renderTables(allReports) {
+        const summaryBody = document.getElementById('summaryBody');
+        summaryBody.innerHTML = "";
+        
+        let groups = JSON.parse(JSON.stringify(defaultGroups));
+        let gTotal = { m:0, r:0, cl:0, kl:0, cd:0, kd:0, s:0 };
+
+        if (allReports) {
+            Object.values(allReports).forEach(report => {
+                const gName = report.group_name;
+                if (groups[gName]) {
+                    groups[gName].m += report.items.length;
+                    report.items.forEach(item => {
+                        const land = parseFloat(item.land) || 0;
+                        const cash = parseFloat(item.cash) || 0;
+                        const kind = parseFloat(item.kind) || 0;
+                        const share = parseFloat(item.share) || Math.round(cash * 0.1);
+
+                        groups[gName].r += land;
+                        groups[gName].cl += Math.round(land * 25200);
+                        groups[gName].kl += Math.round(land * 16800);
+                        groups[gName].cd += cash;
+                        groups[gName].kd += kind;
+                        groups[gName].s += share;
+                    });
+                }
+            });
+        }
+
+        let sNo = 1;
+        Object.keys(groups).forEach(key => {
+            const g = groups[key];
+            const limT = g.cl + g.kl;
+            const drawT = g.cd + g.kd;
+            const pay = g.cd - g.s;
+
+            // Grand Total Calc
+            gTotal.m += g.m; gTotal.r += g.r; gTotal.cl += g.cl;
+            gTotal.kl += g.kl; gTotal.cd += g.cd; gTotal.kd += g.kd; gTotal.s += g.s;
+
+            summaryBody.innerHTML += `
+                <tr>
+                    <td rowspan="2">${sNo++}</td>
+                    <td class="bg-gray">${key}</td>
+                    <td><input type="number" value="${g.m}"></td>
+                    <td><input type="text" value="${g.r.toFixed(2)}"></td>
+                    <td><input type="number" value="${g.cl}"></td>
+                    <td><input type="number" value="${g.kl}"></td>
+                    <td>${limT}</td>
+                    <td><input type="number" value="${g.cd}"></td>
+                    <td><input type="number" value="${g.kd}"></td>
+                    <td>${drawT}</td>
+                    <td><input type="number" value="${g.s}"></td>
+                    <td>${pay}</td>
+                    <td rowspan="2"><input type="text" value="${g.acc}"></td>
+                </tr>
+                <tr class="sub-total">
+                    <td>वन-अधिकार</td>
+                    <td><input type="number" value="0"></td><td><input type="text" value="0.00"></td>
+                    <td><input type="number" value="0"></td><td><input type="number" value="0"></td><td>0</td>
+                    <td><input type="number" value="0"></td><td><input type="number" value="0"></td><td>0</td>
+                    <td><input type="number" value="0"></td><td>0</td>
+                </tr>`;
+        });
+
+        // Add Grand Total Row
+        summaryBody.innerHTML += `
+            <tr class="grand-total">
+                <td colspan="2">कुल योग</td>
+                <td>${gTotal.m}</td><td>${gTotal.r.toFixed(2)}</td>
+                <td>${gTotal.cl}</td><td>${gTotal.kl}</td><td>${gTotal.cl + gTotal.kl}</td>
+                <td>${gTotal.cd}</td><td>${gTotal.kd}</td><td>${gTotal.cd + gTotal.kd}</td>
+                <td>${gTotal.s}</td><td>${gTotal.cd - gTotal.s}</td><td></td>
+            </tr>`;
+            
+        // Update Table 2 Summary (Linked to Table 1)
+        document.getElementById('dt-adv-dist').value = groups["आदिवासी 01"].cd + groups["आदिवासी 02"].cd;
+        document.getElementById('dt-gen-dist').value = groups["सामान्य 01"].cd + groups["सामान्य 02"].cd;
+        document.getElementById('dt-total-dist').value = gTotal.cd;
+    }
+
+    // Initialize with empty/editable state
+    window.onload = () => renderTables(null);
+</script>
+
+</body>
+</html>

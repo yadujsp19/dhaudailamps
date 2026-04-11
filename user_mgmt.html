@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - LAMPS</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <style>
+        :root { --primary: #0f172a; --accent: #6366f1; --success: #10b981; --danger: #f43f5e; --bg: #f8fafc; }
+        * { box-sizing: border-box; transition: 0.2s; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); padding: 25px; color: #1e293b; margin: 0; }
+        
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 25px; border: 1px solid #e2e8f0; }
+        h3 { margin-top: 0; font-size: 18px; color: var(--primary); border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 20px; }
+
+        /* Form Layout */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; align-items: end; }
+        .input-group label { display: block; font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 6px; }
+        input, select { width: 100%; padding: 11px; border: 1.5px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 14px; }
+        input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+
+        /* Buttons */
+        .btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-add { background: var(--accent); color: white; width: 100%; }
+        .btn-add:hover { background: #4f46e5; }
+        
+        .btn-edit { background: #dcfce7; color: #166534; padding: 6px 12px; font-size: 12px; }
+        .btn-edit:hover { background: #bbf7d0; }
+        
+        .btn-del { background: #fee2e2; color: #991b1b; padding: 6px 12px; font-size: 12px; }
+        .btn-del:hover { background: #fecaca; }
+
+        /* Table */
+        .table-section { overflow-x: auto; border-radius: 10px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; background: white; min-width: 700px; }
+        th { background: #f8fafc; color: #64748b; text-align: left; padding: 15px; font-size: 13px; font-weight: 600; border-bottom: 2px solid #f1f5f9; }
+        td { padding: 15px; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #334155; }
+        tr:hover { background: #fdfdfd; }
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .badge-manager { background: #e0e7ff; color: #4338ca; }
+        .badge-staff { background: #f1f5f9; color: #475569; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h3>⚙️ User & Staff Management</h3>
+    <div class="grid">
+        <div class="input-group">
+            <label>Full Name</label>
+            <input type="text" id="u_name" placeholder="Enter Full Name">
+        </div>
+        <div class="input-group">
+            <label>Designation</label>
+            <select id="u_desig">
+                <option value="Manager">Manager</option>
+                <option value="Operator">Operator</option>
+                <option value="Clerk">Clerk</option>
+                <option value="Field Staff">Field Staff</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>User ID</label>
+            <input type="text" id="u_id" placeholder="Login ID">
+        </div>
+        <div class="input-group">
+            <label>Password</label>
+            <input type="text" id="u_pass" placeholder="Password">
+        </div>
+        <div>
+            <button class="btn btn-add" id="save-btn" onclick="addUser()">Save User</button>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>👥 Active Staff List</h3>
+    <div class="table-section">
+        <table>
+            <thead>
+                <tr>
+                    <th>Full Name</th>
+                    <th>Designation</th>
+                    <th>User ID</th>
+                    <th>Password</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="userTableBody">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Firebase Config
+    const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Add or Update User
+    function addUser() {
+        const id = document.getElementById('u_id').value.trim();
+        const name = document.getElementById('u_name').value.trim();
+        const desig = document.getElementById('u_desig').value;
+        const pass = document.getElementById('u_pass').value.trim();
+
+        if (!id || !name || !pass) {
+            return swal("Incomplete!", "Please fill all required fields", "warning");
+        }
+
+        db.ref('lamps/staff/' + id).set({
+            fullName: name,
+            designation: desig,
+            userId: id,
+            password: pass
+        }).then(() => {
+            swal("Success", "Staff record updated successfully!", "success");
+            clearForm();
+        });
+    }
+
+    // Load Data in Real-time
+    db.ref('lamps/staff').on('value', snapshot => {
+        const tbody = document.getElementById('userTableBody');
+        tbody.innerHTML = "";
+        snapshot.forEach(child => {
+            const data = child.val();
+            const badgeClass = data.designation === 'Manager' ? 'badge-manager' : 'badge-staff';
+            tbody.innerHTML += `
+                <tr>
+                    <td><b>${data.fullName}</b></td>
+                    <td><span class="badge ${badgeClass}">${data.designation}</span></td>
+                    <td>${data.userId}</td>
+                    <td><code>${data.password}</code></td>
+                    <td>
+                        <button class="btn-edit" onclick="editUser('${data.userId}')">Edit</button>
+                        <button class="btn-del" onclick="deleteUser('${data.userId}')">Delete</button>
+                    </td>
+                </tr>`;
+        });
+    });
+
+    function deleteUser(id) {
+        swal({
+            title: "Are you sure?",
+            text: "This user will be permanently removed!",
+            icon: "warning",
+            buttons: true,
+            dangerMode: true,
+        }).then((willDelete) => {
+            if (willDelete) {
+                db.ref('lamps/staff/' + id).remove();
+                swal("Deleted!", "User has been removed.", "success");
+            }
+        });
+    }
+
+    function editUser(id) {
+        db.ref('lamps/staff/' + id).once('value', snap => {
+            const d = snap.val();
+            document.getElementById('u_name').value = d.fullName;
+            document.getElementById('u_desig').value = d.designation;
+            document.getElementById('u_id').value = d.userId;
+            document.getElementById('u_pass').value = d.password;
+            document.getElementById('u_id').readOnly = true;
+            document.getElementById('save-btn').innerHTML = "Update User";
+            window.scrollTo(0, 0);
+        });
+    }
+
+    function clearForm() {
+        document.getElementById('u_name').value = "";
+        document.getElementById('u_id').value = "";
+        document.getElementById('u_pass').value = "";
+        document.getElementById('u_id').readOnly = false;
+        document.getElementById('save-btn').innerHTML = "Save User";
+    }
+</script>
+</body>
+</html>
