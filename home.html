@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kisan Portal | LAMPS</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root { --primary: #0f172a; --accent: #6366f1; --danger: #ef4444; --success: #10b981; }
+        body { font-family: 'Noto Sans Devanagari', sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
+
+        .main-container { 
+            display: flex; 
+            gap: 25px; 
+            max-width: 1200px; 
+            margin: 30px auto; 
+            flex-wrap: wrap; 
+        }
+
+        /* Left Side: Status Check */
+        .status-section { flex: 1.2; min-width: 350px; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        h2 { text-align: center; color: var(--primary); margin-bottom: 25px; font-size: 22px; position: relative; }
+        h2::after { content: ''; display: block; width: 50px; height: 4px; background: var(--accent); margin: 8px auto; border-radius: 2px; }
+        
+        input { width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; text-align: center; font-size: 16px; outline: none; transition: 0.3s; box-sizing: border-box; }
+        input:focus { border-color: var(--accent); background: #f5f7ff; }
+        .btn-check { width: 100%; padding: 15px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; margin-top: 20px; cursor: pointer; transition: 0.3s; }
+        .btn-check:hover { background: #4f46e5; transform: translateY(-2px); }
+
+        /* Right Side: Notice Board */
+        .notice-section { flex: 0.8; min-width: 320px; }
+        .notice-card { background: #1e293b; color: white; padding: 20px; border-radius: 20px; height: 450px; display: flex; flex-direction: column; border-left: 6px solid var(--danger); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .notice-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+        .blink-dot { height: 12px; width: 12px; background-color: var(--danger); border-radius: 50%; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Custom Hidden Scrollbar */
+        .notice-box { flex: 1; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+        .notice-box::-webkit-scrollbar { display: none; }
+        
+        .notice-item { background: #334155; padding: 15px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid var(--accent); transition: 0.3s; }
+        .notice-item:hover { background: #3f4e66; }
+        .n-date { font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
+        .n-text { font-size: 15px; margin-top: 6px; line-height: 1.5; color: #f1f5f9; }
+
+        /* Result Table Design */
+        #result-area { display: none; margin-top: 25px; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .res-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #f8fafc; border-radius: 10px; overflow: hidden; }
+        .res-table td { padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+        .label { color: #64748b; font-weight: bold; width: 40%; }
+        .value { color: #0f172a; font-weight: bold; text-align: right; }
+        .status-banner { text-align: center; margin-top: 15px; font-weight: 800; font-size: 18px; padding: 15px; border-radius: 12px; letter-spacing: 1px; }
+
+        footer { text-align: center; margin-top: 40px; }
+        .admin-link { color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: bold; transition: 0.3s; }
+        .admin-link:hover { color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    
+    <div class="status-section">
+        <div class="card">
+            <h2>ऋण की स्थिति जांचें</h2>
+            <input type="text" id="acc_input" placeholder="बैंक खाता नंबर दर्ज करें...">
+            <button class="btn-check" onclick="checkStatus()">खोजें (Search)</button>
+
+            <div id="result-area">
+                <table class="res-table">
+                    <tr><td class="label">किसान का नाम</td><td class="value" id="res-name">-</td></tr>
+                    <tr><td class="label">पिता/पति का नाम</td><td class="value" id="res-fname">-</td></tr>
+                    <tr><td class="label">जाति (Caste)</td><td class="value" id="res-caste">-</td></tr>
+                    <tr><td class="label">ग्राम (Village)</td><td class="value" id="res-vill">-</td></tr>
+                </table>
+                <div id="res-status-box" class="status-banner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notice-section">
+        <div class="notice-card">
+            <div class="notice-header">
+                <div class="blink-dot"></div>
+                <span style="font-weight:bold; letter-spacing:1px; color: #f1f5f9;">लाइव सूचना पटल</span>
+            </div>
+            
+            <div class="notice-box" id="notice-display">
+                <p style="text-align:center; color:#94a3b8; margin-top:50px;">सूचनाएं लोड हो रही हैं...</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<footer>
+    <a href="#" class="admin-link">🔐 कर्मचारी लॉगिन</a>
+</footer>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 1. LIVE NOTICE FETCH (No Scrollbar Style)
+    db.ref('lamps/notices').on('value', snap => {
+        const container = document.getElementById('notice-display');
+        container.innerHTML = "";
+        
+        if(!snap.exists()) {
+            container.innerHTML = "<p style='text-align:center; color:#94a3b8;'>अभी कोई नई सूचना नहीं है।</p>";
+            return;
+        }
+
+        let notices = [];
+        snap.forEach(child => { notices.push(child.val()); });
+        
+        notices.reverse().forEach(n => {
+            container.innerHTML += `
+                <div class="notice-item">
+                    <div class="n-date">📅 ${n.date}</div>
+                    <div class="n-text">${n.msg}</div>
+                </div>`;
+        });
+    });
+
+    // 2. CHECK STATUS LOGIC (Detailed Table)
+    async function checkStatus() {
+        const acc = document.getElementById('acc_input').value.trim();
+        if(!acc) return;
+        
+        swal({ title: "सर्च कर रहे हैं...", buttons: false });
+        try {
+            const fSnap = await db.ref('lamps/farmers/' + acc).once('value');
+            if(!fSnap.exists()) throw new Error("इस खाते की जानकारी नहीं मिली।");
+            const f = fSnap.val();
+            
+            // Updating Table
+            document.getElementById('res-name').innerText = f.name || '-';
+            document.getElementById('res-fname').innerText = f.fname || '-';
+            document.getElementById('res-caste').innerText = f.cat || '-'; // Assuming 'cat' is caste in DB
+            document.getElementById('res-vill').innerText = f.vill || '-';
+
+            const lSnap = await db.ref('lamps/loans/' + acc).once('value');
+            let status = "समिति में लंबित";
+            if(lSnap.exists()) {
+                const loans = lSnap.val();
+                status = loans[Object.keys(loans).pop()].status || status;
+            }
+
+            const sBox = document.getElementById('res-status-box');
+            sBox.innerText = status;
+            
+            // Modern Colors
+            if(status === "ऋण वितरण पूर्ण") {
+                sBox.style.background = "#d1fae5"; sBox.style.color = "#065f46"; sBox.style.border = "2px solid #10b981";
+            } else if(status === "बैंक में लंबित") {
+                sBox.style.background = "#fef3c7"; sBox.style.color = "#92400e"; sBox.style.border = "2px solid #f59e0b";
+            } else {
+                sBox.style.background = "#fee2e2"; sBox.style.color = "#b91c1c"; sBox.style.border = "2px solid #ef4444";
+            }
+
+            document.getElementById('result-area').style.display = "block";
+            swal.close();
+        } catch (e) {
+            swal("सूचना", e.message, "error");
+            document.getElementById('result-area').style.display = "none";
+        }
+    }
+</script>
+
+</body>
+</html>

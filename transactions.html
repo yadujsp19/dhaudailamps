@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <title>Society Accounts | Complete Multi-Entry & Recovery System</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    <style>
+        :root { --dr-color: #ef4444; --cr-color: #10b981; --primary: #0f172a; --bg: #f1f5f9; --accent: #6366f1; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); padding: 20px; margin: 0; }
+        .container { max-width: 1200px; margin: auto; }
+        .top-bar { display: grid; grid-template-columns: 1.5fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; background: white; padding: 10px; border-radius: 12px; overflow-x: auto; }
+        .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; background: #eee; color: #64748b; white-space: nowrap; transition: 0.3s; }
+        .tab-btn.active { background: var(--primary); color: white; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #666; }
+        input, select { width: 100%; padding: 12px; border: 1.5px solid #ddd; border-radius: 8px; box-sizing: border-box; outline: none; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
+        .btn-save { background: var(--accent); width: 100%; font-size: 16px; margin-top: 15px; }
+        .info-box { background: #f0f9ff; border: 1px solid #bae6fd; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: none; }
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; font-size: 13px; }
+        .loan-stat { background: #fee2e2; padding: 10px; border-radius: 6px; text-align: center; border: 1px solid #fecaca; }
+        .manual-fill { background: #fffbeb !important; border-color: #fbbf24 !important; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background: #f8fafc; font-size: 12px; }
+        @media print {
+            @page { size: portrait; margin: 5mm; }
+            .no-print { display: none !important; }
+            #print-area { display: block !important; }
+            .copy-section { border: 1px dashed #000; padding: 10mm; margin-bottom: 10mm; page-break-inside: avoid; }
+        }
+        #print-area { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container no-print">
+    <div class="top-bar">
+        <div class="card" style="background:#eef2ff; border:1.5px solid var(--accent); margin:0; display:flex; align-items:center; gap:10px;">
+            <label style="margin:0">📅 डे-बुक तिथि:</label>
+            <input type="date" id="db-date" onchange="loadLogs()">
+            <button class="btn" style="background:var(--primary)" onclick="window.print()">🖨️ Print View</button>
+        </div>
+        <div class="card" style="margin:0; display:flex; align-items:center; gap:10px;">
+            <input type="text" id="new-acc-name" placeholder="नया खाता नाम">
+            <button class="btn" style="background:var(--accent)" onclick="addNewAccount()">➕ Add Acc</button>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn" id="tab-R" onclick="switchTab('RECEIPT')">📥 प्राप्ति (Receipt)</button>
+        <button class="tab-btn" id="tab-P" onclick="switchTab('PAYMENT')">📤 भुगतान (Payment)</button>
+        <button class="tab-btn" id="tab-J" onclick="switchTab('JOURNAL')">📒 जनरल (Journal)</button>
+        <button class="tab-btn active" id="tab-REC" onclick="switchTab('RECOVERY')" style="background:#059669; color:white;">💰 वसूली जमा (Recovery)</button>
+    </div>
+
+    <div class="card">
+        <h3 id="form-title">💰 ऋण वसूली व्हाउचर</h3>
+
+        <div id="recovery-header" style="display:block; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
+            <div class="grid" style="grid-template-columns: 2fr 1fr 1fr;">
+                <div>
+                    <label>ऋण खाता क्रमांक (Account No)</label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="text" id="rec-acc-no" placeholder="Account No. दर्ज करें...">
+                        <button class="btn" style="background:var(--primary)" onclick="fetchMemberData()">🔍 खोजें</button>
+                    </div>
+                </div>
+                <div><label>जमा माध्यम</label><select id="rec-mode"><option value="Cash">Cash (नगद)</option><option value="Other Transfer">Other Transfer</option></select></div>
+                <div><label>व्हाउचर दिनांक</label><input type="date" id="rec-v-date"></div>
+            </div>
+
+            <div class="info-box" id="member-info" style="display:block;">
+                <p style="font-size: 11px; color: #6b7280; margin-bottom: 10px;">* डाटा मिलने पर यहाँ अपने आप भर जाएगा, अन्यथा मैन्युअल टाइप करें</p>
+                <div class="info-grid">
+                    <div><label>किसान नाम</label><input type="text" id="m-name" placeholder="नाम लिखें"></div>
+                    <div><label>पिता का नाम</label><input type="text" id="m-fname" placeholder="पिता का नाम"></div>
+                    <div><label>ग्राम</label><input type="text" id="m-vill" placeholder="ग्राम"></div>
+                    <div><label>समूह (Group)</label><input type="text" id="m-varg" placeholder="जैसे: आदिवासी 1"></div>
+                    <div><label>मोबाइल</label><input type="text" id="m-mob" placeholder="मोबाइल नं."></div>
+                </div>
+                <div class="grid" style="margin-top:15px;">
+                    <div class="loan-stat"><b>नगद ऋण</b><input type="number" id="l-cash" value="0" style="text-align:center; padding:5px;"></div>
+                    <div class="loan-stat" style="background:#fff7ed;"><b>वस्तु ऋण</b><input type="number" id="l-kind" value="0" style="text-align:center; padding:5px;"></div>
+                    <div class="loan-stat" style="background:#fef2f2;"><b>कुल ऋण</b><input type="number" id="l-total" value="0" style="text-align:center; padding:5px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="std-header" style="display:none; gap:20px; margin-bottom:15px;">
+            <div style="flex:1"><label>दिनांक</label><input type="date" id="std-date"></div>
+            <div style="flex:2"><label>मुख्य विवरण</label><input type="text" id="v-desc" placeholder="नरेशन लिखें..."></div>
+        </div>
+
+        <table style="width:100%; border-collapse:collapse;" id="entry-table">
+            <thead><tr style="background:#f1f5f9;"><th>नामे (Debit)</th><th>जमा (Credit)</th><th width="150">राशि (₹)</th><th width="50">-</th></tr></thead>
+            <tbody id="entry-body"></tbody>
+        </table>
+        <button class="btn" style="background:var(--success); margin-top:10px;" onclick="addRow()">➕ और जोड़ें</button>
+        <button class="btn btn-save" onclick="saveVoucher()">💾 सुरक्षित करें एवं 3-प्रति प्रिंट</button>
+    </div>
+
+    <div class="card">
+        <h4>📜 हालिया रिकॉर्ड्स</h4>
+        <table id="log-table">
+            <thead><tr style="background:#eee"><th>दिनांक</th><th> व्हाउचर</th><th>विवरण</th><th>कुल राशि</th><th>Action</th></tr></thead>
+            <tbody id="log-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="print-area"><div id="print-content"></div></div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentType = 'RECOVERY';
+    let accountOptions = "";
+    let cashBankOptions = "";
+
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('rec-v-date').value = today;
+    document.getElementById('std-date').value = today;
+    document.getElementById('db-date').value = today;
+
+    async function loadAccounts() {
+        const snap = await db.ref('lamps/chart_of_accounts').once('value');
+        const defaults = ["नगद खाता", "बचत बैंक खाता", "ऋण बैंक खाता"];
+        accountOptions = `<option value="">--चुनें--</option>`;
+        cashBankOptions = accountOptions;
+        defaults.forEach(a => { accountOptions += `<option value="${a}">${a}</option>`; cashBankOptions += `<option value="${a}">${a}</option>`; });
+        if(snap.exists()) Object.values(snap.val()).forEach(a => { accountOptions += `<option value="${a.name}">${a.name}</option>`; });
+        addRow();
+    }
+
+    function addRow() {
+        const tbody = document.getElementById('entry-body');
+        const tr = document.createElement('tr');
+        let drS = `<select class="row-dr">${currentType === 'RECEIPT' || currentType === 'RECOVERY' ? cashBankOptions : accountOptions}</select>`;
+        let crS = `<select class="row-cr">${currentType === 'PAYMENT' ? cashBankOptions : accountOptions}</select>`;
+        tr.innerHTML = `<td>${drS}</td><td>${crS}</td><td><input type="number" class="row-amt"></td><td><button class="btn" style="background:red; padding:5px" onclick="this.parentElement.parentElement.remove()">✖</button></td>`;
+        tbody.appendChild(tr);
+    }
+
+    function switchTab(t) {
+        currentType = t;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + (t === 'RECOVERY' ? 'REC' : t.charAt(0))).classList.add('active');
+        document.getElementById('recovery-header').style.display = t === 'RECOVERY' ? 'block' : 'none';
+        document.getElementById('std-header').style.display = t === 'RECOVERY' ? 'none' : 'flex';
+        document.getElementById('form-title').innerText = t === 'RECOVERY' ? '💰 ऋण वसूली व्हाउचर' : `बहु-प्रविष्टि ${t} व्हाउचर`;
+        document.getElementById('entry-body').innerHTML = "";
+        addRow();
+    }
+
+    async function fetchMemberData() {
+        const acc = document.getElementById('rec-acc-no').value.trim();
+        if(!acc) return swal("Error", "कृपया Account No दर्ज करें", "warning");
+        swal({ title: "खोज जारी है...", text: "डेटाबेस चेक किया जा रहा है", icon: "info", buttons: false });
+        
+        try {
+            // Check loans and farmers path
+            const loanSnap = await db.ref('lamps/loans/' + acc).once('value');
+            const farmerSnap = await db.ref('lamps/farmers/' + acc).once('value');
+            
+            if(!loanSnap.exists() && !farmerSnap.exists()) {
+                swal("नया खाता", "डाटा नहीं मिला, आप मैन्युअल जानकारी भर सकते हैं", "info");
+                clearRecoveryFields(true);
+                return;
+            }
+
+            // Farmer basic info
+            if(farmerSnap.exists()){
+                const f = farmerSnap.val();
+                document.getElementById('m-name').value = f.name || '';
+                document.getElementById('m-fname').value = f.fname || '';
+                document.getElementById('m-vill').value = f.vill || '';
+                document.getElementById('m-mob').value = f.mob || '';
+                
+                // Logic for Group (Samuh) based on land
+                let land = parseFloat(f.land_total) || 0;
+                let group = (f.cat === "ST") ? (land <= 2 ? "आदिवासी 1" : "आदिवासी 2") : "सामान्य";
+                document.getElementById('m-varg').value = group;
+            }
+
+            // Loan specific info
+            if(loanSnap.exists()){
+                const loans = loanSnap.val();
+                const lastKey = Object.keys(loans).pop();
+                const d = loans[lastKey];
+                
+                if(d.name) document.getElementById('m-name').value = d.name;
+                if(d.fname) document.getElementById('m-fname').value = d.fname;
+                if(d.vill) document.getElementById('m-vill').value = d.vill;
+                // If loan has group (samuh) saved
+                if(d.season && d.crop) { // Indicator of loan data
+                     document.getElementById('l-cash').value = d.cash_amt || 0;
+                     document.getElementById('l-kind').value = d.kind_amt || 0;
+                     document.getElementById('l-total').value = d.total_amt || 0;
+                }
+            }
+
+            const kName = document.getElementById('m-name').value;
+            const firstCr = document.querySelector('#entry-body .row-cr');
+            if(firstCr && kName) {
+                let exists = false;
+                Array.from(firstCr.options).forEach(opt => { if(opt.value === kName) exists = true; });
+                if(!exists) { firstCr.add(new Option(kName, kName)); }
+                firstCr.value = kName;
+            }
+            swal.close();
+        } catch (e) {
+            swal("सूचना", "डाटा नहीं मिला, कृपया मैन्युअल भरें", "info");
+            clearRecoveryFields(true);
+        }
+    }
+
+    function clearRecoveryFields(isManual) {
+        const fields = ['m-name','m-fname','m-vill','m-varg','m-mob','l-cash','l-kind','l-total'];
+        fields.forEach(f => {
+            const el = document.getElementById(f);
+            if(!isManual) el.value = "";
+            el.classList.toggle('manual-fill', isManual);
+        });
+    }
+
+    async function saveVoucher() {
+        const date = currentType === 'RECOVERY' ? document.getElementById('rec-v-date').value : document.getElementById('std-date').value;
+        const memberName = document.getElementById('m-name').value;
+        const accNo = document.getElementById('rec-acc-no').value;
+        const mainDesc = currentType === 'RECOVERY' ? `वसूली जमा: ${memberName} (${accNo})` : document.getElementById('v-desc').value;
+        
+        const rows = document.querySelectorAll('#entry-body tr');
+        let entries = []; let totalAmt = 0;
+        
+        rows.forEach(r => {
+            const dr = r.querySelector('.row-dr').value;
+            const cr = r.querySelector('.row-cr') ? (r.querySelector('.row-cr').value || memberName) : "";
+            const amt = parseFloat(r.querySelector('.row-amt').value) || 0;
+            if(dr && amt > 0) { entries.push({ dr, cr: cr || "Sadasya Acc", amt }); totalAmt += amt; }
+        });
+
+        if(!entries.length) return swal("Error", "कृपया सही एंट्री भरें", "warning");
+
+        const vData = { 
+            type: currentType, date, mainDesc, totalAmt, entries, ts: Date.now(),
+            member: currentType === 'RECOVERY' ? { name: memberName, acc: accNo } : null
+        };
+
+        await db.ref('lamps/vouchers').push(vData);
+        print3CopyVoucher(vData);
+    }
+
+    function print3CopyVoucher(v) {
+        const container = document.getElementById('print-content');
+        container.innerHTML = "";
+        const labels = ["समिति प्रति", "बैंक प्रति", "पक्षकार प्रति"];
+        labels.forEach(lbl => {
+            let rowH = v.entries.map((e, i) => `<tr><td>${i+1}</td><td style="text-align:left;">${e.dr} <br><small>To ${e.cr}</small></td><td>${e.amt}</td><td>${e.amt}</td></tr>`).join('');
+            container.innerHTML += `<div class="copy-section">
+                <div style="font-size:10px; position:absolute; right:10px; border:1px solid #000; padding:2px;">${lbl}</div>
+                <div style="text-align:center;"><h2>आदिम जाति सेवा सहकारी समिति मर्या. धौड़ाई</h2><h4>${v.type} VOUCHER</h4></div>
+                <div style="display:flex; justify-content:space-between; font-size:12px;"><span>खाता: ${v.member ? v.member.acc : ''} / नाम: ${v.member ? v.member.name : ''}</span><span>दिनांक: ${v.date}</span></div>
+                <table style="width:100%; border-collapse:collapse; margin-top:10px; border:1px solid #000;">
+                <thead><tr><th>क्र.</th><th>विवरण</th><th>नामे (Dr)</th><th>जमा (Cr)</th></tr></thead>
+                <tbody>${rowH}</tbody><tfoot><tr style="font-weight:bold;"><td></td><td>योग</td><td>${v.totalAmt}</td><td>${v.totalAmt}</td></tr></tfoot>
+                </table>
+                <div style="display:flex; justify-content:space-around; margin-top:40px; font-weight:bold; font-size:12px;"><div>प्रबंधक</div><div>कैशियर</div><div>हस्ताक्षर</div></div>
+            </div>`;
+        });
+        window.print();
+        location.reload();
+    }
+
+    async function loadLogs() {
+        const selDate = document.getElementById('db-date').value;
+        const snap = await db.ref('lamps/vouchers').once('value');
+        const body = document.getElementById('log-body'); body.innerHTML = "";
+        if(!snap.exists()) return;
+        Object.keys(snap.val()).reverse().forEach(k => {
+            const v = snap.val()[k];
+            if(selDate && v.date !== selDate) return;
+            body.innerHTML += `<tr><td>${v.date}</td><td>${v.type}</td><td style="font-size:11px;">${v.mainDesc}</td><td>₹${v.totalAmt}</td>
+            <td><button class="btn" style="background:#0f172a; padding:4px 8px;" onclick='print3CopyVoucher(${JSON.stringify(v)})'>🖨️</button>
+            <button class="btn" style="background:red; padding:4px 8px;" onclick="deleteV('${k}')">🗑️</button></td></tr>`;
+        });
+    }
+
+    async function deleteV(k) { if(confirm("डिलीट?")) { await db.ref('lamps/vouchers/'+k).remove(); loadLogs(); } }
+    async function addNewAccount() { const n = document.getElementById('new-acc-name').value; if(n) { await db.ref('lamps/chart_of_accounts').push({name:n}); location.reload(); } }
+
+    window.onload = () => { loadAccounts(); loadLogs(); };
+</script>
+</body>
+</html>

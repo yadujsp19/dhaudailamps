@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kisan Loan Status | LAMPS Dhaurai</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --primary: #6366f1; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; }
+        body { font-family: 'Noto Sans Devanagari', sans-serif; background: #f1f5f9; margin: 0; padding: 15px; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        
+        .status-card { background: white; width: 100%; max-width: 450px; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 6px solid var(--primary); }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h2 { color: #1e293b; margin: 0; font-size: 22px; }
+        .header p { color: #64748b; font-size: 14px; margin-top: 5px; }
+
+        .search-box { margin-bottom: 20px; }
+        input { width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; text-align: center; outline: none; transition: 0.3s; box-sizing: border-box; }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
+        
+        .btn-check { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-check:hover { background: #4f46e5; transform: translateY(-1px); }
+
+        /* Result Section */
+        #result-area { display: none; margin-top: 25px; padding-top: 20px; border-top: 1px dashed #cbd5e1; }
+        .info-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        .info-label { color: #64748b; font-weight: bold; }
+        .info-value { color: #1e293b; font-weight: 700; }
+
+        .status-box { margin-top: 20px; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 18px; }
+        .status-pending-soc { background: #fee2e2; color: var(--danger); border: 1px solid #fecaca; }
+        .status-pending-bnk { background: #fef3c7; color: var(--warning); border: 1px solid #fde68a; }
+        .status-complete { background: #d1fae5; color: var(--success); border: 1px solid #a7f3d0; }
+        
+        .footer-note { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="status-card">
+    <div class="header">
+        <h2>🌾 किसान ऋण स्थिति</h2>
+        <p>आदिम जाति सेवा सहकारी समिति मर्या. धौड़ाई</p>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="acc_no" placeholder="बैंक खाता नंबर दर्ज करें">
+    </div>
+    <button class="btn-check" onclick="fetchStatus()">स्थिति देखें</button>
+
+    <div id="result-area">
+        <div class="info-item"><span class="info-label">किसान का नाम:</span> <span class="info-value" id="disp_name">-</span></div>
+        <div class="info-item"><span class="info-label">पिता का नाम:</span> <span class="info-value" id="disp_fname">-</span></div>
+        <div class="info-item"><span class="info-label">ग्राम:</span> <span class="info-value" id="disp_vill">-</span></div>
+        <div class="info-item"><span class="info-label">जाति:</span> <span class="info-value" id="disp_caste">-</span></div>
+        
+        <div id="status_box" class="status-box">स्थिति लोड हो रही है...</div>
+        
+        <div class="footer-note">
+            * यह पोर्टल केवल जानकारी के लिए है। अधिक विवरण के लिए समिति कार्यालय में संपर्क करें।
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    async function fetchStatus() {
+        const acc = document.getElementById('acc_no').value.trim();
+        if(!acc) return swal("Oops", "कृपया खाता नंबर दर्ज करें", "warning");
+
+        swal({ title: "खोज रहे हैं...", text: "डेटाबेस चेक किया जा रहा है", icon: "info", buttons: false });
+
+        try {
+            // 1. Fetch Farmer Data from Farmers Table
+            const farmerSnap = await db.ref('lamps/farmers/' + acc).once('value');
+            if(!farmerSnap.exists()) throw new Error("इस बैंक खाता नंबर का विवरण नहीं मिला।");
+
+            const f = farmerSnap.val();
+            document.getElementById('disp_name').innerText = f.name;
+            document.getElementById('disp_fname').innerText = f.fname || '-';
+            document.getElementById('disp_vill').innerText = f.vill || '-';
+            document.getElementById('disp_caste').innerText = f.caste || '-';
+
+            // 2. Fetch Latest Loan Status from Loans Table
+            const loanSnap = await db.ref('lamps/loans/' + acc).once('value');
+            let status = "समिति में लंबित"; // Default
+            
+            if(loanSnap.exists()) {
+                const loans = loanSnap.val();
+                const lastKey = Object.keys(loans).pop();
+                status = loans[lastKey].status || "समिति में लंबित";
+            }
+
+            // 3. Update Status Box UI
+            const sBox = document.getElementById('status_box');
+            sBox.innerText = status;
+            sBox.className = "status-box"; // Reset classes
+
+            if(status === "बैंक में लंबित") sBox.classList.add('status-pending-bnk');
+            else if(status === "ऋण वितरण पूर्ण") sBox.classList.add('status-complete');
+            else sBox.classList.add('status-pending-soc');
+
+            document.getElementById('result-area').style.display = "block";
+            swal.close();
+
+        } catch (e) {
+            swal("सूचना", e.message, "error");
+            document.getElementById('result-area').style.display = "none";
+        }
+    }
+</script>
+</body>
+</html>

@@ -9,52 +9,60 @@
     <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
 
     <style>
-        :root { --primary: #0f172a; --accent: #6366f1; --danger: #ef4444; --success: #10b981; }
+        :root { --primary: #0f172a; --accent: #6366f1; --danger: #ef4444; --success: #10b981; --warning: #f59e0b; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #f1f5f9; padding: 20px; margin: 0; }
-        
         .group-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 30px; border-top: 4px solid var(--accent); }
+        /* Added for header layout */
+        .group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
         th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: center; }
         th { background: #f8fafc; color: #64748b; font-size: 13px; }
-
         .btn { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; margin: 2px; font-size: 12px; color: white; transition: 0.2s; }
         .btn-edit { background: var(--accent); }
-        .btn-summary { background: #f59e0b; width: 100%; margin-top: 10px; font-size: 14px; }
-        .btn-save { background: var(--success); padding: 10px 25px; }
         .btn-delete { background: var(--danger); }
+        .btn-summary { background: #f59e0b; width: 100%; margin-top: 10px; font-size: 14px; }
+        .btn-excel { background: #1d6f42; }
+
+        /* Status Select Styling */
+        .status-select { padding: 8px; border-radius: 6px; border: 2px solid #ddd; font-weight: bold; cursor: pointer; outline: none; background: white; }
 
         #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; overflow-y: auto; padding: 20px; }
-        .modal-content { background: white; width: 98%; max-width: 1500px; margin: auto; padding: 20px; border-radius: 8px; }
-        
-        .ritz-table { width: 100%; border-collapse: collapse; margin-top: 10px; color: black; border: 1.5px solid #000; }
-        .ritz-table th, .ritz-table td { border: 1px solid #000; padding: 5px; font-size: 11px; text-align: center; }
-        .editable-cell { background-color: #fff9c4; border: 2px dashed #fbc02d !important; font-weight: bold; }
+        .modal-content { background: white; width: 99%; max-width: 1650px; margin: auto; padding: 25px; border-radius: 8px; }
 
-        .footer-notes { text-align: left; margin-top: 15px; font-size: 12px; font-weight: bold; line-height: 1.6; }
+        .ritz-table { width: 100%; border-collapse: collapse; margin-top: 10px; color: black; border: 1.5px solid #000; table-layout: fixed; }
+        .ritz-table th, .ritz-table td { 
+            border: 1px solid #000; 
+            padding: 2px; 
+            font-size: 12px; 
+            text-align: center; 
+            word-wrap: break-word; 
+            font-family: "Arial Narrow", Arial, sans-serif; 
+        }
+        .footer-notes { text-align: left; margin-top: 20px; font-size: 14px; font-weight: bold; line-height: 1.8; color: #000; }
         .header-selects { margin-bottom: 15px; display: flex; justify-content: center; gap: 15px; }
 
         @media print {
-            body { background: white; padding: 0; }
-            .no-print { display: none !important; }
-            #modal-overlay { position: absolute; display: block !important; background: none; padding: 0; width: 100%; }
-            .modal-content { border: none; box-shadow: none; width: 100%; max-width: 100%; padding: 0; }
             @page { size: landscape; margin: 5mm; }
-            .ritz-table { width: 100%; zoom: 85%; }
+            html, body { background: white !important; padding: 0 !important; margin: 0 !important; }
+            .no-print { display: none !important; }
+            #modal-overlay { position: static; display: block !important; background: white !important; padding: 0 !important; overflow: visible !important; }
+            .modal-content { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
+            #printable-area { width: 100% !important; }
+            .ritz-table { width: 100% !important; border: 1.2pt solid black !important; }
+            .ritz-table th, .ritz-table td { font-size: 11px !important; padding: 1px !important; }
         }
     </style>
 </head>
 <body>
 
-<div id="tables-wrapper">
-    <h3 style="text-align:center; color:#64748b;">Loading Archive Reports...</h3>
-</div>
+<div id="tables-wrapper" class="no-print"><h3 style="text-align:center; color:#64748b;">Loading Archive Reports...</h3></div>
 
 <div id="modal-overlay">
     <div class="modal-content">
         <div class="no-print" style="display:flex; justify-content: space-between; margin-bottom: 15px;">
             <div>
-                <button class="btn btn-save" id="save-change-btn" style="display:none;">💾 Save Changes</button>
-                <button class="btn" style="background:#0f172a" onclick="window.print()">🖨️ Print (A4/Legal)</button>
+                <button class="btn" style="background:#0f172a" onclick="window.print()">🖨️ Print Report</button>
+                <button class="btn btn-excel" onclick="downloadExcel()">📊 Download Excel</button>
             </div>
             <button class="btn btn-delete" onclick="closeReport()">✖ Close</button>
         </div>
@@ -66,7 +74,6 @@
     const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-
     let allReports = {};
     const today = new Date().toLocaleDateString('hi-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -87,104 +94,147 @@
 
     function renderGroupTable(name, reports, container) {
         let rows = "";
+        const currentStatus = reports[0].group_status || "समिति में लंबित";
+        
         reports.reverse().forEach((r, i) => {
             rows += `<tr><td>${i+1}</td><td>${r.gen_date}</td><td>${r.group_name}</td><td>${r.crop_name}</td><td>${r.items.length}</td>
             <td><button class="btn btn-edit" onclick="editReport('${r.id}')">📝 Edit & View</button>
             <button class="btn btn-delete" onclick="deleteReport('${r.id}')">🗑️ Delete</button></td></tr>`;
         });
-        container.innerHTML += `<div class="group-container"><h3>📁 ${name}</h3><table><thead><tr><th>SNo</th><th>दिनांक</th><th>कैटेगरी</th><th>फसल</th><th>किसान</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table>
-        <button class="btn btn-summary" onclick="viewGroupSummary('${name}')">📊 View Group Summary (गोशवारा)</button></div>`;
+
+        container.innerHTML += `
+            <div class="group-container">
+                <div class="group-header">
+                    <h3>📁 ${name}</h3>
+                    <div>
+                        <label style="font-weight:bold; font-size:13px; color:#64748b;">बैच स्थिति: </label>
+                        <select class="status-select" onchange="updateGroupStatus('${name}', this.value)">
+                            <option value="समिति में लंबित" ${currentStatus==='समिति में लंबित'?'selected':''}>⏳ समिति में लंबित</option>
+                            <option value="बैंक में लंबित" ${currentStatus==='बैंक में लंबित'?'selected':''}>🏦 बैंक में लंबित</option>
+                            <option value="ऋण वितरण पूर्ण" ${currentStatus==='ऋण वितरण पूर्ण'?'selected':''}>✅ ऋण वितरण पूर्ण</option>
+                        </select>
+                    </div>
+                </div>
+                <table><thead><tr><th>SNo</th><th>दिनांक</th><th>कैटेगरी</th><th>फसल</th><th>किसान</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table>
+                <button class="btn btn-summary" onclick="viewGroupSummary('${name}')">📊 View Group Summary (गोशवारा)</button>
+            </div>`;
     }
 
-    function editReport(id) {
+    async function updateGroupStatus(reportName, newStatus) {
+        swal({ title: "स्टेटस अपडेट", text: `क्या आप '${reportName}' के सभी किसानों का स्टेटस '${newStatus}' में बदलना चाहते हैं?`, icon: "warning", buttons: ["निरस्त", "हाँ, बदलें"] })
+        .then(async (willUpdate) => {
+            if (willUpdate) {
+                const updates = {};
+                Object.keys(allReports).forEach(key => {
+                    if (allReports[key].report_name === reportName) {
+                        updates[`lamps/generated_reports/${key}/group_status`] = newStatus;
+                        allReports[key].items.forEach(item => {
+                            updates[`lamps/loans/${item.acc}/status`] = newStatus;
+                        });
+                    }
+                });
+                await db.ref().update(updates);
+                swal("सफल", "बैच का स्टेटस अपडेट कर दिया गया है", "success");
+            }
+        });
+    }
+
+    async function editReport(id) {
+        swal({ title: "प्रतीक्षा करें...", text: "Layout Set किया जा रहा है", icon: "info", buttons: false });
         const d = allReports[id];
         let rows = "";
+        const loanSnap = await db.ref('lamps/loans').once('value');
+        const accInfoSnap = await db.ref('accountinfo').once('value');
+        const loanData = loanSnap.val() || {};
+        const accountInfo = accInfoSnap.val() || {};
+
+        let g_rakba = 0, g_lim_nagad = 0, g_lim_vastu = 0, g_cash = 0, g_kind = 0, g_total = 0, g_share = 0, g_net = 0;
+
         d.items.forEach((item, i) => {
-            const cash = parseFloat(item.cash) || 0;
-            const share = parseFloat(item.share) || 0;
             const land = parseFloat(item.land) || 0;
-            rows += `<tr class="edit-row" data-index="${i}">
-                <td>${(i+1).toString().padStart(2,'0')}</td>
-                <td>${item.name}</td>
-                <td>${item.fname}</td>
-                <td>${item.caste || '-'}</td>
+            const farmerLoans = loanData[item.acc] || {};
+            const dbLoan = farmerLoans[Object.keys(farmerLoans).pop()] || {};
+
+            const cheque = dbLoan.cheque || '-';
+            const permit = dbLoan.permit || '-';
+            const share = parseFloat(item.share) || parseFloat(dbLoan.share_amt) || 0;
+            const cash = parseFloat(item.cash) || 0;
+            const kind = parseFloat(item.kind) || 0;
+            const total = parseFloat(item.total) || 0;
+            const lim_nagad = Math.round(land*25200);
+            const lim_vastu = Math.round(land*16800);
+            const net_val = cash - share;
+
+            g_rakba += land; g_lim_nagad += lim_nagad; g_lim_vastu += lim_vastu;
+            g_cash += cash; g_kind += kind; g_total += total; g_share += share; g_net += net_val;
+
+            const accDetails = accountInfo[item.acc] || {};
+            rows += `<tr>
+                <td style="width:25px;">${(i+1)}</td>
+                <td style="text-align:left;">${item.name}</td>
+                <td style="text-align:left;">${item.fname}</td>
+                <td style="width:35px;">${item.caste || '-'}</td>
                 <td>${item.vill}</td>
-                <td>${item.land}</td>
-                <td>${Math.round(land*25200)}</td>
-                <td>${Math.round(land*16800)}</td>
-                <td>${item.cash}</td>
-                <td>${item.kind}</td>
-                <td>${item.total}</td>
-                <td class="editable-cell share-in" contenteditable="true" oninput="reCalc(this, ${cash})">${share}</td>
-                <td class="net-val">${(cash - share).toFixed(0)}</td>
-                <td>${item.acc}</td>
+                <td style="width:40px;">${item.land}</td>
+                <td>${lim_nagad}</td><td>${lim_vastu}</td>
+                <td>${cheque}</td><td>${permit}</td>
+                <td>${cash}</td><td>${kind}</td><td>${total}</td>
+                <td>${share}</td><td>${net_val.toFixed(0)}</td>
+                <td style="font-size:10px;">${item.acc}</td>
+                <td style="font-size:10px;">${accDetails.dmr_vastu || ''}</td>
+                <td style="font-size:10px;">${accDetails.dmr_nagad || ''}</td>
             </tr>`;
         });
 
+        const footerRow = `<tr style="background:#f2f2f2; font-weight:bold;"><td colspan="5">कुल योग (Grand Total)</td><td>${g_rakba.toFixed(2)}</td><td>${g_lim_nagad}</td><td>${g_lim_vastu}</td><td colspan="2">-</td><td>${g_cash}</td><td>${g_kind}</td><td>${g_total}</td><td>${g_share}</td><td>${g_net.toFixed(0)}</td><td colspan="3">-</td></tr>`;
+
         document.getElementById('printable-area').innerHTML = `
-            <div style="text-align:right; font-weight:bold; font-size:12px;">दिनांक: ${today}</div>
-            <div style="text-align:center; font-family:Arial;">
-                <h2 style="margin:0;">आदिम जाति सेवा सहकारी समिति मर्यादित धौड़ाई, जिला नारायणपुर (छ.ग.)</h2>
-                <h3 style="margin:5px 0;">केसीसी आहरण पत्रक वर्ग - ${d.group_name}</h3>
-                <p style="margin:2px 0; font-weight:bold;">आहरण दिनांक - ${today}</p>
-            </div>
-            <table class="ritz-table">
-                <thead>
-                    <tr>
-                        <th rowspan="2">क्र.</th><th rowspan="2">नाम</th><th rowspan="2">पिता का नाम</th><th rowspan="2">जाति</th><th rowspan="2">ग्राम</th><th rowspan="2">रकबा</th>
-                        <th colspan="2">साख सीमा</th><th colspan="3">आहरित राशि</th><th rowspan="2">हिस्सा</th><th rowspan="2">भुगतान</th><th rowspan="2">खाता</th>
-                    </tr>
-                    <tr><th>नगद</th><th>वस्तु</th><th>नगद</th><th>वस्तु</th><th>कुल</th></tr>
-                </thead>
-                <tbody>${rows}</tbody>
-            </table>
-            <div class="footer-notes">
-                टीप :- <br>
-                1. प्रमाणित किया जाता है कि उपरोक्त किसान संस्था के कार्यक्षेत्र में निवास करते है | <br>
-                2. उपरोक्त कृषक सदस्यों के ऊपर संस्था का कालातीत ऋण नही है | <br>
-                3. कृषकों का हस्ताक्षर एवं अंगूठा निशान प्रमाणित है |
-            </div>
-            <div style="display:flex; justify-content:space-around; margin-top:50px; font-weight:bold; text-align:center;">
-                <div style="width:200px; border-top:1.5px solid black; padding-top:5px;">समिति प्रबंधक</div>
-                <div style="width:200px; border-top:1.5px solid black; padding-top:5px;">अध्यक्ष</div>
+            <div id="excel-export-table">
+                <div style="text-align:right; font-weight:bold; font-size:12px;">दिनांक: ${today}</div>
+                <div style="text-align:center;">
+                    <h2 style="margin:0; font-size:20px;">आदिम जाति सेवा सहकारी समिति मर्यादित धौड़ाई</h2>
+                    <h3 style="margin:5px 0;">केसीसी आहरण पत्रक वर्ग - ${d.group_name}</h3>
+                </div>
+                <table class="ritz-table" id="main-report-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" style="width:25px;">क्र.</th><th rowspan="2">नाम</th><th rowspan="2">पिता</th><th rowspan="2" style="width:35px;">जाति</th><th rowspan="2">ग्राम</th><th rowspan="2" style="width:40px;">रकबा</th>
+                            <th colspan="2">साख सीमा</th><th rowspan="2">चेक</th><th rowspan="2">परमिट</th><th colspan="3">आहरित राशि</th><th rowspan="2">हिस्सा</th><th rowspan="2">भुगतान</th><th rowspan="2">सेविंग खाता</th><th rowspan="2">डीएमआर वस्तु खाता</th><th rowspan="2">डीएमआर नगद खाता</th>
+                        </tr>
+                        <tr><th>नगद</th><th>वस्तु</th><th>नगद</th><th>वस्तु</th><th>कुल</th></tr>
+                    </thead>
+                    <tbody>${rows}${footerRow}</tbody>
+                </table>
+                <div class="footer-notes">
+                    टीप :- 1. प्रमाणित किया जाता है कि उपरोक्त किसान संस्था के कार्यक्षेत्र में निवास करते है | 2. संस्था का कालातीत ऋण नही है | 3. किसानों के हस्ताक्षर/अंगूठा निशान प्रमाणित है |
+                </div>
+                <div style="display:flex; justify-content:space-around; margin-top:50px; font-weight:bold; font-size:14px;">
+                    <div>समिति प्रबंधक</div><div>अध्यक्ष</div>
+                </div>
             </div>`;
-        document.getElementById('save-change-btn').style.display = "inline-block";
-        document.getElementById('save-change-btn').onclick = () => saveEdited(id);
+        
+        swal.close();
         document.getElementById('modal-overlay').style.display = "block";
-    }
-
-    async function saveEdited(id) {
-        const d = allReports[id];
-        document.querySelectorAll('.edit-row').forEach(row => {
-            const idx = row.getAttribute('data-index');
-            const s = parseFloat(row.querySelector('.share-in').innerText) || 0;
-            d.items[idx].share = s;
-            d.items[idx].net = (parseFloat(d.items[idx].cash) || 0) - s;
-        });
-        await db.ref('lamps/generated_reports/' + id).update({ items: d.items });
-        swal("सफलता", "डेटा सुरक्षित कर दिया गया है!", "success");
-        closeReport();
-    }
-
-    function reCalc(el, cash) {
-        const row = el.closest('tr');
-        const s = parseFloat(el.innerText) || 0;
-        row.querySelector('.net-val').innerText = (cash - s).toFixed(0);
     }
 
     function viewGroupSummary(reportGroupName) {
         const accounts = { "आदिवासी 01": "105004642778", "आदिवासी 02": "105004642789", "सामान्य 01": "105004642734", "सामान्य 02": "105004642745" };
         const summary = { "आदिवासी 01": {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0}, "आदिवासी 02": {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0}, "सामान्य 01": {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0}, "सामान्य 02": {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0} };
-        const cropSum = { "धान": {c:0, r:0, nc:0, nv:0}, "मक्का": {c:0, r:0, nc:0, nv:0}, "अन्य फसल": {c:0, r:0, nc:0, nv:0} };
+        const cropsList = ["धान", "मक्का", "कोदो-कुटकी", "तिलहन", "अन्य फसल"];
+        const cropSum = {};
+        cropsList.forEach(c => cropSum[c] = {c:0, r:0, nc:0, nv:0});
+
         let gt = {c:0, r:0, nc:0, nv:0, s:0};
 
         Object.values(allReports).filter(r => r.report_name === reportGroupName).forEach(r => {
-            const cat = r.group_name; const cName = r.crop_name || "अन्य फसल";
+            const cat = r.group_name; 
+            const cName = r.crop_name || "अन्य फसल";
             r.items.forEach(i => {
                 const l = parseFloat(i.land) || 0; const c = parseFloat(i.cash) || 0; const k = parseFloat(i.kind) || 0; const s = parseFloat(i.share) || 0;
                 if(summary[cat]) { summary[cat].c++; summary[cat].r += l; summary[cat].lc += Math.round(l*25200); summary[cat].lk += Math.round(l*16800); summary[cat].nc += c; summary[cat].nv += k; summary[cat].s += s; }
-                if(!cropSum[cName]) cropSum[cName] = {c:0, r:0, nc:0, nv:0};
-                cropSum[cName].c++; cropSum[cName].r += l; cropSum[cName].nc += c; cropSum[cName].nv += k;
+                
+                let targetCrop = cropsList.includes(cName) ? cName : "अन्य फसल";
+                cropSum[targetCrop].c++; cropSum[targetCrop].r += l; cropSum[targetCrop].nc += c; cropSum[targetCrop].nv += k;
             });
         });
 
@@ -204,7 +254,7 @@
             <div class="no-print header-selects">
                 <select id="sel-s"><option>खरीफ</option><option>रबी</option></select>
                 <select id="sel-y">${yearOpts}</select>
-                <select id="sel-c"><option>धान</option><option>अन्य फसल</option></select>
+                <select id="sel-c"><option>धान</option><option>मक्का</option><option>कोदो-कुटकी</option><option>अन्य फसल</option></select>
             </div>
             <div style="text-align:right; font-weight:bold; font-size:12px;">दिनांक: ${today}</div>
             <div style="text-align:center; font-family:Arial;">
@@ -212,49 +262,60 @@
                 <h4 style="margin:2px 0;">आदिम जाति सेवा सहकारी समिति मर्यादित, धौड़ाई</h4>
                 <h4 style="margin:5px 0;">ऋण वितरण गोशवारा (${reportGroupName}) <span id="h-s">खरीफ</span> वर्ष <span id="h-y">2026-27</span> फसल: <span id="h-c">धान</span></h4>
             </div>
-            <table class="ritz-table">
+            <table class="ritz-table" id="summary-export-table">
                 <thead>
                     <tr><th rowspan="2">क्र.</th><th rowspan="2">वर्ग</th><th rowspan="2">सदस्य</th><th rowspan="2">रकबा</th><th colspan="3">KCC स्वीकृत सीमा</th><th colspan="3">आहरित राशि</th><th rowspan="2">हिस्सा</th><th rowspan="2">भुगतान</th><th rowspan="2">खाता</th></tr>
                     <tr><th>नगद</th><th>वस्तु</th><th>योग</th><th>नगद</th><th>वस्तु</th><th>योग</th></tr>
-                    <tr style="background:#eee; font-size:9px;"><td>01</td><td>02</td><td>03</td><td>04</td><td>05</td><td>06</td><td>07</td><td>08</td><td>09</td><td>10</td><td>11</td><td>12</td><td>13</td></tr>
                 </thead>
                 <tbody>${mainRows}</tbody>
                 <tfoot style="font-weight:bold; background:#ccc;"><tr><td colspan="2">कुल योग</td><td>${gt.c}</td><td>${gt.r.toFixed(2)}</td><td>-</td><td>-</td><td>-</td><td>${gt.nc}</td><td>${gt.nv}</td><td>${gt.nc+gt.nv}</td><td>${gt.s}</td><td>${gt.nc-gt.s}</td><td>-</td></tr></tfoot>
             </table>
-            <div style="display:flex; justify-content:space-between; margin-top:20px; font-family:Arial;">
+            
+            <div style="display:flex; justify-content:space-between; margin-top:20px;">
                 <table class="ritz-table" style="width:55%;">
                     <thead><tr><th>क्र.</th><th>फसल</th><th>सदस्य</th><th>रकबा</th><th>नगद</th><th>वस्तु</th><th>योग</th></tr></thead>
-                    <tbody>${Object.keys(cropSum).map((cn, i) => `<tr><td>${i+1}</td><td>${cn}</td><td>${cropSum[cn].c}</td><td>${cropSum[cn].r.toFixed(2)}</td><td>${cropSum[cn].nc}</td><td>${cropSum[cn].nv}</td><td>${cropSum[cn].nc+cropSum[cn].nv}</td></tr>`).join('')}</tbody>
+                    <tbody>
+                        ${cropsList.map((cn, i) => {
+                            const cs = cropSum[cn];
+                            return `<tr><td>${(i+1).toString().padStart(2,'0')}</td><td>${cn}</td><td>${cs.c}</td><td>${cs.r.toFixed(2)}</td><td>${cs.nc}</td><td>${cs.nv}</td><td>${cs.nc+cs.nv}</td></tr>`;
+                        }).join('')}
+                    </tbody>
                 </table>
+
                 <table class="ritz-table" style="width:42%;">
                     <thead><tr><th>विवरण</th><th>खाता नम्बर</th><th>राशि</th></tr></thead>
                     <tbody>
-                        <tr><td>कृषक खाते में जमा</td><td>-</td><td class="editable-cell" contenteditable="true">${(gt.nc - gt.s).toFixed(2)}</td></tr>
-                        <tr><td>बचत अमानत हिस्सा</td><td>105005096156</td><td class="editable-cell" contenteditable="true">${gt.s.toFixed(2)}</td></tr>
-                        <tr><td>Revolving Fund खाद</td><td>105004642790</td><td class="editable-cell" contenteditable="true">${gt.nv.toFixed(2)}</td></tr>
-                        <tr><td>धान बीज</td><td>105004358254</td><td class="editable-cell" contenteditable="true">0.00</td></tr>
-                        <tr><td>बचत अमानत</td><td>105004625548</td><td class="editable-cell" contenteditable="true">0.00</td></tr>
-                        <tr style="font-weight:bold; border-top:2px solid black;"><td>कुल चेक राशि</td><td></td><td class="editable-cell" contenteditable="true">${(gt.nc + gt.nv).toFixed(2)}</td></tr>
+                        <tr><td>कृषक खाते में जमा</td><td>-</td><td style="font-weight:bold;">${(gt.nc - gt.s).toFixed(2)}</td></tr>
+                        <tr><td>बचत अमानत हिस्सा</td><td>105005096156</td><td style="font-weight:bold;">${gt.s.toFixed(2)}</td></tr>
+                        <tr><td>Revolving Fund खाद</td><td>105004642790</td><td style="font-weight:bold;">${gt.nv.toFixed(2)}</td></tr>
+                        <tr><td>धान बीज</td><td>105004358254</td><td style="font-weight:bold;">0.00</td></tr>
+                        <tr><td>बचत अमानत</td><td>105004625548</td><td style="font-weight:bold;">0.00</td></tr>
+                        <tr style="font-weight:bold; background:#eee;"><td>कुल चेक राशि</td><td></td><td style="font-weight:bold;">${(gt.nc + gt.nv).toFixed(2)}</td></tr>
                     </tbody>
                 </table>
             </div>
-            <div style="display:flex; justify-content:space-around; margin-top:60px; font-weight:bold; text-align:center;">
-                <div style="width:200px; border-top:1.5px solid black; padding-top:5px;">समिति प्रबंधक</div>
-                <div style="width:200px; border-top:1.5px solid black; padding-top:5px;">अध्यक्ष</div>
+
+            <div style="display:flex; justify-content:space-around; margin-top:60px; font-weight:bold; font-size:14px;">
+                <div>समिति प्रबंधक</div><div>अध्यक्ष</div>
             </div>`;
+        
         const sync = () => {
             document.getElementById('h-s').innerText = document.getElementById('sel-s').value;
             document.getElementById('h-y').innerText = document.getElementById('sel-y').value;
             document.getElementById('h-c').innerText = document.getElementById('sel-c').value;
         };
         document.querySelectorAll('select').forEach(s => s.onchange = sync);
-        document.getElementById('save-change-btn').style.display = "none";
         document.getElementById('modal-overlay').style.display = "block";
     }
 
+    function downloadExcel() {
+        const table = document.querySelector(".ritz-table"); 
+        const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
+        XLSX.writeFile(wb, `Lamps_Report_${today}.xlsx`);
+    }
+
     function closeReport() { document.getElementById('modal-overlay').style.display = "none"; }
-    function deleteReport(id) { swal({ title: "डिलीट?", icon: "warning", buttons: true, dangerMode: true }).then((w) => { if(w) db.ref('lamps/generated_reports/'+id).remove(); }); }
-    function exportExcel() { XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("export-table")), "Lamps_Archive.xlsx"); }
+    function deleteReport(id) { swal({ title: "डिलीट?", icon: "warning", buttons: ["नहीं", "हाँ"], dangerMode: true }).then((w) => { if(w) db.ref('lamps/generated_reports/'+id).remove(); }); }
 </script>
 </body>
 </html>

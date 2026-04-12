@@ -142,11 +142,9 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Rates logic with LocalStorage (Persistence)
     let multiplierCash = parseFloat(localStorage.getItem('multiplierCash')) || 25200;
     let multiplierKind = parseFloat(localStorage.getItem('multiplierKind')) || 16800;
     
-    // Config modal default values setup
     document.getElementById('rate_cash').value = multiplierCash;
     document.getElementById('rate_kind').value = multiplierKind;
 
@@ -178,8 +176,16 @@
     }
 
     function addRow(preData = null) {
+        // Section 3: Seeds removed, IR64 and MTU1010 added
         const row = `<tr>
-            <td><select class="row-item"><option value="यूरिया" ${preData && preData.desc=='यूरिया'?'selected':''}>यूरिया</option><option value="DAP" ${preData && preData.desc=='DAP'?'selected':''}>DAP</option><option value="NPK" ${preData && preData.desc=='NPK'?'selected':''}>NPK</option><option value="Potash" ${preData && preData.desc=='Potash'?'selected':''}>Potash</option><option value="Seeds" ${preData && preData.desc=='Seeds'?'selected':''}>Seeds</option></select></td>
+            <td><select class="row-item">
+                <option value="यूरिया" ${preData && preData.desc=='यूरिया'?'selected':''}>यूरिया</option>
+                <option value="DAP" ${preData && preData.desc=='DAP'?'selected':''}>DAP</option>
+                <option value="NPK" ${preData && preData.desc=='NPK'?'selected':''}>NPK</option>
+                <option value="Potash" ${preData && preData.desc=='Potash'?'selected':''}>Potash</option>
+                <option value="IR64" ${preData && preData.desc=='IR64'?'selected':''}>IR64</option>
+                <option value="MTU1010" ${preData && preData.desc=='MTU1010'?'selected':''}>MTU1010</option>
+            </select></td>
             <td><input type="number" class="row-qty" oninput="calcRow(this)" value="${preData ? preData.qty : 0}"></td>
             <td><input type="number" class="row-rate" oninput="calcRow(this)" value="${preData ? preData.rate : 0}"></td>
             <td class="row-total">${preData ? preData.total : '0.00'}</td>
@@ -283,15 +289,10 @@
     function applyRates() { 
         const newCash = parseFloat(document.getElementById('rate_cash').value);
         const newKind = parseFloat(document.getElementById('rate_kind').value);
-        
-        // Save to variables
         multiplierCash = newCash;
         multiplierKind = newKind;
-        
-        // Save to LocalStorage for persistence
         localStorage.setItem('multiplierCash', newCash);
         localStorage.setItem('multiplierKind', newKind);
-        
         updateLimits(); 
         document.getElementById('configModal').style.display = 'none'; 
         swal("Updated", "नयी दरें सुरक्षित कर दी गयी हैं।", "success");
