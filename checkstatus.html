@@ -3,113 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kisan Loan Status | LAMPS Dhaurai</title>
+    <title>Kisan Portal | LAMPS Dhaurai</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
-    
+
     <style>
-        :root { --primary: #6366f1; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; }
-        body { font-family: 'Noto Sans Devanagari', sans-serif; background: #f1f5f9; margin: 0; padding: 15px; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        
-        .status-card { background: white; width: 100%; max-width: 450px; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 6px solid var(--primary); }
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h2 { color: #1e293b; margin: 0; font-size: 22px; }
-        .header p { color: #64748b; font-size: 14px; margin-top: 5px; }
+        :root { --primary: #0f172a; --accent: #6366f1; --danger: #ef4444; --success: #10b981; }
+        body { font-family: 'Noto Sans Devanagari', sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: var(--primary); }
 
-        .search-box { margin-bottom: 20px; }
-        input { width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; text-align: center; outline: none; transition: 0.3s; box-sizing: border-box; }
-        input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
-        
-        .btn-check { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-check:hover { background: #4f46e5; transform: translateY(-1px); }
+        .main-container { display: flex; gap: 25px; max-width: 1200px; margin: 20px auto; flex-wrap: wrap; }
 
-        /* Result Section */
-        #result-area { display: none; margin-top: 25px; padding-top: 20px; border-top: 1px dashed #cbd5e1; }
-        .info-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
-        .info-label { color: #64748b; font-weight: bold; }
-        .info-value { color: #1e293b; font-weight: 700; }
-
-        .status-box { margin-top: 20px; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 18px; }
-        .status-pending-soc { background: #fee2e2; color: var(--danger); border: 1px solid #fecaca; }
-        .status-pending-bnk { background: #fef3c7; color: var(--warning); border: 1px solid #fde68a; }
-        .status-complete { background: #d1fae5; color: var(--success); border: 1px solid #a7f3d0; }
+        /* Left Side: Status Check */
+        .status-section { flex: 1.2; min-width: 350px; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        h2 { text-align: center; margin-bottom: 25px; font-size: 22px; position: relative; }
+        h2::after { content: ''; display: block; width: 50px; height: 4px; background: var(--accent); margin: 8px auto; border-radius: 2px; }
         
-        .footer-note { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 20px; }
+        input { width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; text-align: center; font-size: 16px; outline: none; box-sizing: border-box; }
+        .btn-check { width: 100%; padding: 15px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; margin-top: 15px; cursor: pointer; transition: 0.3s; }
+
+        /* Right Side: Notice Board */
+        .notice-section { flex: 0.8; min-width: 320px; }
+        .notice-card { background: #1e293b; color: white; padding: 20px; border-radius: 20px; height: 440px; display: flex; flex-direction: column; border-left: 6px solid var(--danger); }
+        .notice-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+        .blink-dot { height: 12px; width: 12px; background-color: var(--danger); border-radius: 50%; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+        .notice-box { flex: 1; overflow-y: auto; scrollbar-width: none; }
+        .notice-box::-webkit-scrollbar { display: none; }
+        .notice-item { background: #334155; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid var(--accent); }
+        .file-link { display: inline-block; margin-top: 8px; color: #a5b4fc; text-decoration: none; font-size: 13px; font-weight: bold; }
+
+        /* Stock Section */
+        .stock-section { width: 100%; max-width: 1200px; margin: 30px auto; }
+        .stock-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px; }
+        .stock-card { background: white; padding: 20px; border-radius: 15px; text-align: center; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.03); transition: 0.3s; }
+        .stock-card:hover { transform: translateY(-5px); border-color: var(--accent); }
+        .stock-card h4 { margin: 0; color: #64748b; font-size: 14px; text-transform: uppercase; min-height: 35px; }
+        .stock-card h3 { margin: 10px 0; font-size: 32px; color: var(--primary); font-weight: 800; }
+        .stock-card .unit { font-size: 13px; font-weight: bold; }
+
+        /* Result Area */
+        #result-area { display: none; margin-top: 25px; }
+        .res-table { width: 100%; border-collapse: collapse; background: #f8fafc; border-radius: 10px; overflow: hidden; }
+        .res-table td { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+        .label { color: #64748b; font-weight: bold; width: 45%; }
+        .value { color: #0f172a; font-weight: bold; text-align: right; }
+        .status-banner { text-align: center; margin-top: 15px; font-weight: 800; font-size: 18px; padding: 15px; border-radius: 12px; border: 2px solid transparent; }
+
+        footer { text-align: center; margin-top: 50px; padding: 20px; color: #94a3b8; font-size: 13px; border-top: 1px solid #e2e8f0; }
     </style>
 </head>
 <body>
 
-<div class="status-card">
-    <div class="header">
-        <h2>🌾 किसान ऋण स्थिति</h2>
-        <p>आदिम जाति सेवा सहकारी समिति मर्या. धौड़ाई</p>
+<div class="main-container">
+    <div class="status-section">
+        <div class="card">
+            <h2>ऋण की स्थिति जांचें</h2>
+            <input type="text" id="acc_input" placeholder="बैंक खाता नंबर दर्ज करें...">
+            <button class="btn-check" onclick="checkStatus()">स्थिति देखें (Search)</button>
+
+            <div id="result-area">
+                <table class="res-table">
+                    <tr><td class="label">किसान का नाम</td><td class="value" id="res-name">-</td></tr>
+                    <tr><td class="label">पिता/पति का नाम</td><td class="value" id="res-fname">-</td></tr>
+                    <tr><td class="label">ग्राम (Village)</td><td class="value" id="res-vill">-</td></tr>
+                    <tr><td class="label">खरीफ वर्ष</td><td class="value" id="res-year">-</td></tr>
+                    <tr><td class="label">आवेदन तिथि</td><td class="value" id="res-date">-</td></tr>
+                </table>
+                <div id="res-status-box" class="status-banner"></div>
+            </div>
+        </div>
     </div>
 
-    <div class="search-box">
-        <input type="text" id="acc_no" placeholder="बैंक खाता नंबर दर्ज करें">
-    </div>
-    <button class="btn-check" onclick="fetchStatus()">स्थिति देखें</button>
-
-    <div id="result-area">
-        <div class="info-item"><span class="info-label">किसान का नाम:</span> <span class="info-value" id="disp_name">-</span></div>
-        <div class="info-item"><span class="info-label">पिता का नाम:</span> <span class="info-value" id="disp_fname">-</span></div>
-        <div class="info-item"><span class="info-label">ग्राम:</span> <span class="info-value" id="disp_vill">-</span></div>
-        <div class="info-item"><span class="info-label">जाति:</span> <span class="info-value" id="disp_caste">-</span></div>
-        
-        <div id="status_box" class="status-box">स्थिति लोड हो रही है...</div>
-        
-        <div class="footer-note">
-            * यह पोर्टल केवल जानकारी के लिए है। अधिक विवरण के लिए समिति कार्यालय में संपर्क करें।
+    <div class="notice-section">
+        <div class="notice-card">
+            <div class="notice-header">
+                <div class="blink-dot"></div>
+                <span style="font-weight:bold; letter-spacing:1px;">लाइव सूचना पटल</span>
+            </div>
+            <div class="notice-box" id="notice-display">
+                <p style="text-align:center; color:#94a3b8; margin-top:50px;">लोड हो रहा है...</p>
+            </div>
         </div>
     </div>
 </div>
+
+<div class="stock-section">
+    <h2 style="text-align:left;">📦 खाद एवं बीज की उपलब्धता (Live Stock)</h2>
+    <div class="stock-grid" id="stock-container">
+        <p style="color:#64748b; text-align:center; width:100%;">लोड हो रहा है...</p>
+    </div>
+</div>
+
+<footer>
+    © 2026 आदिम जाति सेवा सहकारी समिति मर्यादित धौड़ाई | छत्तीसगढ़
+</footer>
 
 <script>
     const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    async function fetchStatus() {
-        const acc = document.getElementById('acc_no').value.trim();
-        if(!acc) return swal("Oops", "कृपया खाता नंबर दर्ज करें", "warning");
+    // Report Item List (Jo Stock Report me hai wahi dikhega)
+    const reportItems = ["DAP", "UREA", "NPK", "POTASH", "MTU1010", "IR64", "राजेश्वरी", "स्वर्णा"];
 
-        swal({ title: "खोज रहे हैं...", text: "डेटाबेस चेक किया जा रहा है", icon: "info", buttons: false });
+    // 1. Notice Board Logic
+    db.ref('lamps/notices').on('value', snap => {
+        const container = document.getElementById('notice-display');
+        container.innerHTML = "";
+        if(!snap.exists()) {
+            container.innerHTML = "<p style='text-align:center; color:#94a3b8;'>अभी कोई सूचना नहीं है।</p>";
+            return;
+        }
+        let notices = [];
+        snap.forEach(child => { notices.push(child.val()); });
+        notices.reverse().forEach(n => {
+            let fileHTML = n.fileData ? `<a href="${n.fileData}" target="_blank" class="file-link">📎 फाइल देखें (${n.fileName || 'Attachment'})</a>` : "";
+            container.innerHTML += `
+                <div class="notice-item">
+                    <div style="font-size:10px; color:#94a3b8;">📅 ${n.date}</div>
+                    <div style="font-size:15px; margin-top:5px; line-height:1.4;">${n.msg}</div>
+                    ${fileHTML}
+                </div>`;
+        });
+    });
 
+    // 2. Stock Logic - Restricted to Report Items
+    db.ref('lamps/inventory').on('value', snap => {
+        const container = document.getElementById('stock-container');
+        container.innerHTML = "";
+        const data = snap.val() || {};
+
+        reportItems.forEach(itemName => {
+            const it = data[itemName] || { opening: 0, total_in: 0, total_out: 0, loss: 0 };
+            const balance = (parseFloat(it.opening) || 0) + (parseFloat(it.total_in) || 0) - (parseFloat(it.total_out) || 0) - (parseFloat(it.loss) || 0);
+
+            container.innerHTML += `
+                <div class="stock-card">
+                    <h4>${itemName}</h4>
+                    <h3>${balance}</h3>
+                    <div class="unit" style="color:${balance <= 5 ? '#ef4444' : '#10b981'};">
+                        ${balance <= 5 ? 'स्टॉक कम है' : 'बोरी उपलब्ध'}
+                    </div>
+                </div>`;
+        });
+    });
+
+    // 3. Status Check Logic
+    async function checkStatus() {
+        const acc = document.getElementById('acc_input').value.trim();
+        if(!acc) return swal("Oops", "खाता नंबर दर्ज करें", "warning");
+        
+        swal({ title: "खोज रहे हैं...", buttons: false });
+        
         try {
-            // 1. Fetch Farmer Data from Farmers Table
-            const farmerSnap = await db.ref('lamps/farmers/' + acc).once('value');
-            if(!farmerSnap.exists()) throw new Error("इस बैंक खाता नंबर का विवरण नहीं मिला।");
-
-            const f = farmerSnap.val();
-            document.getElementById('disp_name').innerText = f.name;
-            document.getElementById('disp_fname').innerText = f.fname || '-';
-            document.getElementById('disp_vill').innerText = f.vill || '-';
-            document.getElementById('disp_caste').innerText = f.caste || '-';
-
-            // 2. Fetch Latest Loan Status from Loans Table
-            const loanSnap = await db.ref('lamps/loans/' + acc).once('value');
-            let status = "समिति में लंबित"; // Default
+            const fSnap = await db.ref('lamps/farmers/' + acc).once('value');
+            if(!fSnap.exists()) throw new Error("विवरण नहीं मिला। खाता नंबर जांचें।");
+            const f = fSnap.val();
             
-            if(loanSnap.exists()) {
-                const loans = loanSnap.val();
+            document.getElementById('res-name').innerText = f.name || '-';
+            document.getElementById('res-fname').innerText = f.fname || '-';
+            document.getElementById('res-vill').innerText = f.vill || '-';
+
+            const lSnap = await db.ref('lamps/loans/' + acc).once('value');
+            let status = "समिति में लंबित";
+            let appDate = "N/A";
+            let year = "2026-27"; // Default Varsh
+            
+            if(lSnap.exists()) {
+                const loans = lSnap.val();
                 const lastKey = Object.keys(loans).pop();
-                status = loans[lastKey].status || "समिति में लंबित";
+                const lastLoan = loans[lastKey];
+                status = lastLoan.status || status;
+                appDate = lastLoan.app_date || lastLoan.date || "N/A";
+                year = lastLoan.year || "2026-27";
             }
 
-            // 3. Update Status Box UI
-            const sBox = document.getElementById('status_box');
-            sBox.innerText = status;
-            sBox.className = "status-box"; // Reset classes
+            document.getElementById('res-year').innerText = year;
+            document.getElementById('res-date').innerText = appDate;
 
-            if(status === "बैंक में लंबित") sBox.classList.add('status-pending-bnk');
-            else if(status === "ऋण वितरण पूर्ण") sBox.classList.add('status-complete');
-            else sBox.classList.add('status-pending-soc');
+            const sBox = document.getElementById('res-status-box');
+            sBox.innerText = status;
+            
+            if(status === "ऋण वितरण पूर्ण") {
+                sBox.style.background = "#d1fae5"; sBox.style.color = "#065f46"; sBox.style.border = "2px solid #10b981";
+            } else if(status === "बैंक में लंबित") {
+                sBox.style.background = "#fef3c7"; sBox.style.color = "#92400e"; sBox.style.border = "2px solid #f59e0b";
+            } else {
+                sBox.style.background = "#fee2e2"; sBox.style.color = "#b91c1c"; sBox.style.border = "2px solid #ef4444";
+            }
 
             document.getElementById('result-area').style.display = "block";
             swal.close();
-
         } catch (e) {
             swal("सूचना", e.message, "error");
             document.getElementById('result-area').style.display = "none";

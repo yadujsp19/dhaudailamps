@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <title>Receipt Voucher Print Format</title>
+    <style>
+        .voucher-container {
+            width: 180mm;
+            padding: 10mm;
+            background-color: #ffc0cb; /* गुलाबी बैकग्राउंड इमेज के अनुसार */
+            border: 1px solid #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #000;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .header-section {
+            text-align: right;
+            margin-bottom: 10px;
+        }
+
+        .main-title {
+            text-align: center;
+            text-decoration: underline;
+            font-size: 22px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .sub-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .dotted-line {
+            border-bottom: 1px dotted #000;
+            display: inline-block;
+            min-width: 150px;
+            padding: 0 5px;
+        }
+
+        .voucher-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+            margin-bottom: 20px;
+        }
+
+        .voucher-table th, .voucher-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .details-section {
+            margin-top: 20px;
+            line-height: 2;
+        }
+
+        .footer-section {
+            margin-top: 60px;
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+        }
+
+        .amount-in-words {
+            margin-top: 20px;
+            font-style: italic;
+        }
+
+        /* प्रिंट के लिए सेटिंग्स */
+        @media print {
+            body { background: none; }
+            .voucher-container { border: none; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="voucher-container">
+    <div class="header-section">
+        <b>परिशिष्ट - 1</b>
+    </div>
+
+    <div style="text-align: center; font-weight: bold; font-size: 18px;">
+        नगद / प्राप्ति व्हाउचर
+    </div>
+
+    <div class="main-title">
+        आ.जा. से. सह. समिति मर्या. धौड़ाई
+    </div>
+
+    <div class="sub-header">
+        <div>प्र.क. सं. <span class="dotted-line">AR/NPR/24</span></div>
+        <div>दिनांक: <span class="dotted-line">16/05/2025</span></div>
+    </div>
+
+    <table class="voucher-table">
+        <thead>
+            <tr>
+                <th width="10%">क्रमांक</th>
+                <th width="40%">खाते का नाम</th>
+                <th width="25%">नगद पंजी (कैश बुक) / लेजर पृष्ठ सं.</th>
+                <th width="12.5%">नामे (रु.)</th>
+                <th width="12.5%">जमा (रु.)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="height: 40px;">
+                <td>1</td>
+                <td>नगद</td>
+                <td></td>
+                <td>1,00,000.00</td>
+                <td></td>
+            </tr>
+            <tr style="height: 40px;">
+                <td>2</td>
+                <td>अंश पूँजी एवं अग्रिम सदस्यता</td>
+                <td></td>
+                <td></td>
+                <td>1,00,000.00</td>
+            </tr>
+            <tr style="height: 30px;"><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr style="height: 30px;"><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr style="font-weight: bold;">
+                <td colspan="3" style="text-align: right;">योग</td>
+                <td>1,00,000.00</td>
+                <td>1,00,000.00</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="details-section">
+        <div><b>(यहाँ विवरण दीजिए):</b> <span class="dotted-line" style="width: 80%;">चालू खा. 15376/01 रकबराम/डुमई</span></div>
+        <div class="amount-in-words"><b>रुपये (शब्दों में):</b> <span class="dotted-line" style="width: 80%;">एक लाख रुपये मात्र</span></div>
+    </div>
+
+    <div class="footer-section">
+        <div style="text-align: center;">
+            <br><br>
+            -----------------------<br>
+            प्राधिकृत अधिकारी
+        </div>
+        <div style="text-align: center;">
+            <br><br>
+            -----------------------<br>
+            प्राप्तकर्ता के हस्ताक्षर
+        </div>
+    </div>
+</div>
+
+<div style="text-align:center; margin-top:20px;" class="no-print">
+    <button onclick="window.print()" style="padding:10px 20px; cursor:pointer;">प्रिंट व्हाउचर</button>
+</div>
+
+</body>
+</html>

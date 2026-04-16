@@ -3,137 +3,266 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loan Application & Status | LAMPS</title>
+    <title>Loan Management Portal | LAMPS</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+    
     <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <style>
-        :root { --brand: #6366f1; --primary: #0f172a; --bg: #f8fafc; --white: #ffffff; --border: #e2e8f0; --success: #10b981; --danger: #ef4444; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', 'Noto Sans Devanagari', sans-serif; }
-        body { background: var(--bg); padding: 20px; color: var(--primary); }
-        .card { background: var(--white); border-radius: 12px; border: 1px solid var(--border); padding: 25px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
-        h2 { text-align: center; color: var(--brand); margin-bottom: 20px; font-size: 22px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
-        h4 { background: #f1f5f9; padding: 10px 15px; border-radius: 6px; margin: 20px 0 10px; font-size: 14px; border-left: 4px solid var(--brand); }
-        .search-area { display: flex; gap: 10px; margin-bottom: 25px; background: #eef2ff; padding: 15px; border-radius: 10px; border: 1px solid #c7d2fe; }
-        .search-area input { flex: 1; padding: 12px; border: 1px solid #a7f3d0; border-radius: 8px; outline: none; }
-        .btn-search { background: var(--primary); color: white; border: none; padding: 0 25px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-        .field label { display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 5px; }
-        input, select { width: 100%; padding: 10px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; background: #fff; }
-        input[readonly] { background: #f1f5f9; font-weight: 600; }
+        :root { 
+            --brand: #6366f1; 
+            --brand-hover: #4f46e5;
+            --brand-light: #eef2ff;
+            --primary: #0f172a; 
+            --secondary: #64748b;
+            --bg: #f1f5f9; 
+            --white: #ffffff;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', sans-serif; 
+            background: var(--bg); 
+            padding: 20px; 
+            color: var(--primary);
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        /* Header Card */
+        .header-card {
+            background: linear-gradient(135deg, var(--brand), #4f46e5);
+            color: white;
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+        }
+
+        .header-card h2 { font-size: 28px; margin-bottom: 5px; letter-spacing: -0.5px; }
+        .header-card p { opacity: 0.8; font-size: 14px; }
+
+        /* Stats Section */
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px; }
-        .stat-card { background: var(--white); padding: 20px; border-radius: 15px; text-align: center; border: 1px solid var(--border); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); transition: transform 0.2s ease; }
+        .stat-card { 
+            background: var(--white); 
+            padding: 20px; 
+            border-radius: 16px; 
+            text-align: center; 
+            border: 1px solid var(--border); 
+            box-shadow: var(--shadow);
+            transition: 0.3s;
+        }
         .stat-card:hover { transform: translateY(-5px); }
-        .stat-card h3 { font-size: 28px; font-weight: 800; margin-bottom: 5px; color: var(--primary); }
-        .stat-card p { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-        .stat-total { border-bottom: 4px solid var(--primary); }
-        .stat-pending { border-bottom: 4px solid var(--danger); }
-        .stat-complete { border-bottom: 4px solid var(--success); }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { background: #f8fafc; padding: 12px; text-align: center; font-size: 12px; border-bottom: 2px solid var(--border); color: #64748b; }
-        td { padding: 8px; border-bottom: 1px solid var(--border); text-align: center; }
-        .table-container { width: 100%; overflow-x: auto; max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: white; }
-        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; color: white; display: inline-block; min-width: 80px; }
-        .pending { background: var(--danger); } .complete { background: var(--success); }
-        .btn-save { background: var(--brand); color: white; width: 100%; padding: 15px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; margin-top: 20px; font-size: 16px; }
-        .btn-refresh { background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; }
-        .btn-edit { background: #f59e0b; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; }
-        #configModal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 350px; }
+        .stat-card h3 { font-size: 32px; font-weight: 800; color: var(--primary); }
+        .stat-card p { font-size: 11px; font-weight: 700; color: var(--secondary); text-transform: uppercase; margin-top: 5px; }
+        .stat-total { border-bottom: 5px solid var(--brand); }
+        .stat-pending { border-bottom: 5px solid var(--danger); }
+        .stat-complete { border-bottom: 5px solid var(--success); }
+
+        /* Main Form Card */
+        .card { 
+            background: var(--white); 
+            border-radius: 16px; 
+            padding: 30px; 
+            margin-bottom: 25px; 
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        h4 { 
+            display: flex; align-items: center; gap: 10px;
+            background: var(--brand-light); 
+            color: var(--brand);
+            padding: 12px 18px; 
+            border-radius: 10px; 
+            margin: 35px 0 20px; 
+            font-size: 15px; font-weight: 700;
+        }
+        h4::before { content: ''; width: 4px; height: 18px; background: var(--brand); border-radius: 4px; }
+
+        /* Search Area */
+        .search-container {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px dashed var(--brand);
+            margin-bottom: 30px;
+            display: flex; gap: 10px;
+        }
+        .search-container input {
+            flex: 1; padding: 12px 16px;
+            border: 1px solid var(--border); border-radius: 8px; outline: none; font-size: 14px;
+        }
+        .btn-search {
+            background: var(--primary); color: white; border: none;
+            padding: 0 25px; border-radius: 8px; cursor: pointer; font-weight: 600;
+        }
+
+        /* Grid Layout */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+        .field { margin-bottom: 5px; }
+        .field label { display: block; font-size: 13px; font-weight: 600; color: var(--secondary); margin-bottom: 6px; }
+
+        input, select { 
+            width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 8px; 
+            font-size: 14px; background: #fff; transition: 0.2s;
+        }
+        input:focus, select:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+        input[readonly] { background: #f8fafc; cursor: not-allowed; font-weight: 600; }
+
+        /* Custom Table Inside Form */
+        .table-container { border-radius: 10px; border: 1px solid var(--border); overflow: hidden; margin-top: 10px; }
+        .table-container table { width: 100%; border-collapse: collapse; background: white; }
+        .table-container th { background: #f8fafc; padding: 12px; font-size: 12px; color: var(--secondary); text-align: center; }
+        .table-container td { padding: 10px; text-align: center; border-top: 1px solid var(--border); }
+
+        .btn-add-item { background: var(--success); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 700; margin-bottom: 10px; }
+
+        /* Action Buttons */
+        .btn-save { 
+            background: var(--brand); color: white; width: 100%; padding: 16px; 
+            border: none; border-radius: 12px; font-weight: 700; cursor: pointer; 
+            margin-top: 30px; font-size: 16px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); transition: 0.3s;
+        }
+        .btn-save:hover { background: var(--brand-hover); transform: translateY(-1px); }
+
+        /* Loan Status Table */
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); max-height: 500px; }
+        .status-table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        .status-table th { background: #f8fafc; padding: 14px; font-size: 12px; color: var(--secondary); text-transform: uppercase; text-align: left; position: sticky; top: 0; border-bottom: 2px solid var(--border); }
+        .status-table td { padding: 14px; border-bottom: 1px solid #f1f5f9; font-size: 13.5px; }
+
+        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; color: white; }
+        .pending { background: var(--danger); }
+        .complete { background: var(--success); }
+
+        /* Action Icons */
+        .act-icon { width: 32px; height: 32px; border-radius: 6px; border: none; cursor: pointer; transition: 0.2s; background: var(--brand-light); color: var(--brand); font-weight: bold; }
+        
+        /* Modal */
+        #configModal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; padding: 30px; border-radius: 16px; width: 360px; box-shadow: var(--shadow); }
+
+        @media (max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } .grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>📄 ऋण आवेदन एवं प्रबंधन</h2>
-    <div class="search-area">
-        <input type="text" id="loan_search_acc" placeholder="बैंक खाता नंबर दर्ज करें...">
-        <button class="btn-search" onclick="fetchFarmerForLoan()">🔍 किसान खोजें</button>
+<div class="container">
+    
+    <div class="header-card">
+        <h2>📄 ऋण आवेदन एवं प्रबंधन</h2>
+        <p>LAMPS धौड़ाई - सहकारी समिति ऋण वितरण प्रणाली</p>
     </div>
 
-    <h4>1. किसान की जानकारी</h4>
-    <div class="grid">
-        <div class="field"><label>आवेदन दिनांक</label><input type="date" id="l_date"></div>
-        <div class="field"><label>किसान का नाम</label><input type="text" id="l_name" readonly></div>
-        <div class="field"><label>पिता का नाम</label><input type="text" id="l_fname" readonly></div>
-        <div class="field"><label>ग्राम</label><input type="text" id="l_vill" readonly></div>
-        <div class="field"><label>कुल भूमि (हेक्टेयर)</label><input type="text" id="l_land" readonly></div>
-        <div class="field"><label>समूह</label><input type="text" id="l_group" readonly style="color:var(--brand); font-weight:bold;"></div>
-    </div>
-
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px;">
-        <h4>2. साख सीमा (Credit Limit)</h4>
-        <button onclick="openConfig()" style="background:#f59e0b; color:white; border:none; padding:5px 12px; border-radius:6px; cursor:pointer; font-size:12px;">⚙️ दरें बदलें</button>
-    </div>
-    <div class="grid">
-        <div class="field"><label>सत्र / वर्ष</label>
-            <select id="l_season">
-                <option value="खरीफ वर्ष 2025-26">खरीफ वर्ष 2025-26</option>
-                <option value="रबी वर्ष 2025-26">रबी वर्ष 2025-26</option>
-            </select>
-        </div>
-        <div class="field"><label>फसल</label>
-            <select id="l_crop_type" onchange="updateLimits()">
-                <option value="धान">धान (Paddy)</option><option value="अन्य">अन्य फसल</option>
-            </select>
-        </div>
-        <div class="field"><label>नगद ऋण सीमा</label><input type="text" id="lim_cash" readonly></div>
-        <div class="field"><label>वस्तु ऋण सीमा</label><input type="text" id="lim_kind" readonly></div>
-        <div class="field"><label>कुल ऋण सीमा</label><input type="text" id="lim_total" readonly style="background:#eef2ff;"></div>
-    </div>
-
-    <h4>3. खाद एवं बीज की मांग</h4>
-    <button onclick="addRow()" style="background:#10b981; color:white; border:none; padding:5px 12px; border-radius:5px; margin-bottom:10px; cursor:pointer;">+ आइटम जोड़ें</button>
-    <div class="table-container">
-        <table>
-            <thead><tr><th>विवरण</th><th>मात्रा (बोरी)</th><th>दर</th><th>कुल रूपये</th><th>Action</th></tr></thead>
-            <tbody id="demandBody"></tbody>
-            <tfoot><tr><td colspan="3" style="text-align:right; font-weight:bold;">कुल वस्तु मांग:</td><td id="table_grand_total" style="font-weight:bold; color:var(--brand);">0.00</td><td></td></tr></tfoot>
-        </table>
-    </div>
-
-    <h4>4. स्वीकृत ऋण एवं भुगतान</h4>
-    <div class="grid">
-        <div class="field"><label>चेक क्रमांक</label><input type="text" id="s_cheque"></div>
-        <div class="field"><label>नगद ऋण राशि</label><input type="number" id="s_cash" oninput="calcFinal()" value="0"></div>
-        <div class="field"><label>हिस्सा राशि कटौती</label><input type="number" id="s_share" oninput="calcFinal()" value="0"></div>
-        <div class="field"><label>बीमा राशि कटौती</label><input type="number" id="s_insurance" oninput="calcFinal()" value="0"></div>
-        <div class="field"><label>कुल भुगतान राशि</label><input type="number" id="s_net_payment" readonly style="background:#ecfdf5; font-weight:bold; color:var(--success);"></div>
-        <div class="field"><label>परमिट क्रमांक</label><input type="text" id="s_permit"></div>
-        <div class="field"><label>वस्तु ऋण राशि</label><input type="number" id="s_kind" readonly value="0"></div>
-        <div class="field"><label>कुल स्वीकृत ऋण</label><input type="number" id="s_total" readonly style="font-weight:bold; color:var(--brand); background:#fdf2f2;"></div>
-    </div>
-
-    <button class="btn-save" id="btn-save-loan" onclick="saveLoan()">💾 ऋण डेटा सुरक्षित करें</button>
-</div>
-
-<div class="card">
     <div class="stats-grid">
         <div class="stat-card stat-total"><h3 id="stat_total">0</h3><p>कुल पंजीकृत किसान</p></div>
         <div class="stat-card stat-pending"><h3 id="stat_pending">0</h3><p>आवेदन हेतु लंबित</p></div>
         <div class="stat-card stat-complete"><h3 id="stat_complete">0</h3><p>ऋण आवेदन पूर्ण</p></div>
     </div>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <h4>📋 किसान ऋण स्थिति (Loan Status)</h4>
-        <button class="btn-refresh" onclick="fetchKisanStatus()">🔄 डेटा सिंक करें</button>
+
+    <div class="card">
+        <div class="search-container">
+            <input type="text" id="loan_search_acc" placeholder="बैंक खाता नंबर दर्ज करें...">
+            <button class="btn-search" onclick="fetchFarmerForLoan()">🔍 किसान खोजें</button>
+        </div>
+
+        <h4>1. किसान की जानकारी</h4>
+        <div class="grid">
+            <div class="field"><label>आवेदन दिनांक</label><input type="date" id="l_date"></div>
+            <div class="field"><label>किसान का नाम</label><input type="text" id="l_name" readonly></div>
+            <div class="field"><label>पिता का नाम</label><input type="text" id="l_fname" readonly></div>
+            <div class="field"><label>ग्राम</label><input type="text" id="l_vill" readonly></div>
+            <div class="field"><label>कुल भूमि (हेक्टेयर)</label><input type="text" id="l_land" readonly></div>
+            <div class="field"><label>समूह</label><input type="text" id="l_group" readonly style="color:var(--brand);"></div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
+            <h4>2. साख सीमा (Credit Limit)</h4>
+            <button onclick="openConfig()" style="background:#f59e0b; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;">⚙️ दरें बदलें</button>
+        </div>
+        <div class="grid">
+            <div class="field"><label>सत्र / वर्ष</label>
+                <select id="l_season">
+                    <option value="खरीफ वर्ष 2025-26">खरीफ वर्ष 2025-26</option>
+                    <option value="रबी वर्ष 2025-26">रबी वर्ष 2025-26</option>
+                </select>
+            </div>
+            <div class="field"><label>फसल</label>
+                <select id="l_crop_type" onchange="updateLimits()">
+                    <option value="धान">धान (Paddy)</option><option value="अन्य">अन्य फसल</option>
+                </select>
+            </div>
+            <div class="field"><label>नगद ऋण सीमा</label><input type="text" id="lim_cash" readonly></div>
+            <div class="field"><label>वस्तु ऋण सीमा</label><input type="text" id="lim_kind" readonly></div>
+            <div class="field"><label>कुल ऋण सीमा</label><input type="text" id="lim_total" readonly style="background:var(--brand-light); color:var(--brand);"></div>
+        </div>
+
+        <h4>3. खाद एवं बीज की मांग</h4>
+        <button class="btn-add-item" onclick="addRow()">+ नया आइटम जोड़ें</button>
+        <div class="table-container">
+            <table>
+                <thead><tr><th>विवरण</th><th>मात्रा (बोरी)</th><th>दर</th><th>कुल रूपये</th><th>Action</th></tr></thead>
+                <tbody id="demandBody"></tbody>
+                <tfoot>
+                    <tr style="background:#f8fafc; font-weight:bold;">
+                        <td colspan="3" style="text-align:right; padding:12px;">कुल वस्तु मांग:</td>
+                        <td id="table_grand_total" style="color:var(--brand);">0.00</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <h4>4. स्वीकृत ऋण एवं भुगतान</h4>
+        <div class="grid">
+            <div class="field"><label>चेक क्रमांक</label><input type="text" id="s_cheque" placeholder="Cheque Number"></div>
+            <div class="field"><label>नगद ऋण राशि</label><input type="number" id="s_cash" oninput="calcFinal()" value="0"></div>
+            <div class="field"><label>हिस्सा राशि कटौती</label><input type="number" id="s_share" oninput="calcFinal()" value="0"></div>
+            <div class="field"><label>बीमा राशि कटौती</label><input type="number" id="s_insurance" oninput="calcFinal()" value="0"></div>
+            <div class="field"><label>कुल भुगतान राशि</label><input type="number" id="s_net_payment" readonly style="color:var(--success); background:#ecfdf5;"></div>
+            <div class="field"><label>परमिट क्रमांक</label><input type="text" id="s_permit" placeholder="Permit Number"></div>
+            <div class="field"><label>वस्तु ऋण राशि</label><input type="number" id="s_kind" readonly value="0"></div>
+            <div class="field"><label>कुल स्वीकृत ऋण</label><input type="number" id="s_total" readonly style="color:var(--danger); background:#fff1f2;"></div>
+        </div>
+
+        <button class="btn-save" id="btn-save-loan" onclick="saveLoan()">💾 ऋण डेटा सुरक्षित करें</button>
     </div>
-    <div class="table-container">
-        <table>
-            <thead><tr><th>SNo</th><th>Account No</th><th>किसान का नाम</th><th>पिता का नाम</th><th>ग्राम</th><th>जाति</th><th>मोबाइल नं.</th><th>लोन स्टेटस</th><th>Action</th></tr></thead>
-            <tbody id="statusTableBody"></tbody>
-        </table>
+
+    <div class="card">
+        <div class="table-header">
+            <h3>📋 किसान ऋण स्थिति (Loan Status)</h3>
+            <button class="btn-search" style="background:var(--success);" onclick="fetchKisanStatus()">🔄 डेटा सिंक करें</button>
+        </div>
+        <div class="table-wrap">
+            <table class="status-table">
+                <thead><tr><th>SN</th><th>Account No</th><th>किसान का नाम</th><th>ग्राम</th><th>वर्ग</th><th>मोबाइल</th><th>लोन स्टेटस</th><th>Action</th></tr></thead>
+                <tbody id="statusTableBody"></tbody>
+            </table>
+        </div>
     </div>
+
 </div>
 
 <div id="configModal">
     <div class="modal-content">
-        <h4 style="margin:0 0 15px 0;">साख सीमा दरें</h4>
-        <div class="field"><label>नगद गुणांक</label><input type="number" id="rate_cash" value="25200"></div>
-        <div class="field"><label>वस्तु गुणांक</label><input type="number" id="rate_kind" value="16800"></div>
-        <button onclick="applyRates()" style="width:100%; padding:10px; background:var(--brand); color:white; border:none; border-radius:8px; cursor:pointer; margin-top:10px;">Apply</button>
+        <h4 style="margin:0 0 15px 0;">⚙️ साख सीमा दरें</h4>
+        <div class="field"><label>नगद गुणांक (Cash)</label><input type="number" id="rate_cash"></div>
+        <div class="field" style="margin-top:10px;"><label>वस्तु गुणांक (Kind)</label><input type="number" id="rate_kind"></div>
+        <button onclick="applyRates()" style="width:100%; padding:12px; background:var(--brand); color:white; border:none; border-radius:8px; cursor:pointer; margin-top:20px; font-weight:700;">Apply Rates</button>
+        <button onclick="document.getElementById('configModal').style.display='none'" style="width:100%; margin-top:10px; background:none; border:none; color:var(--secondary); cursor:pointer; font-size:12px;">Cancel</button>
     </div>
 </div>
 
@@ -142,13 +271,17 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // Rates Multipliers
     let multiplierCash = parseFloat(localStorage.getItem('multiplierCash')) || 25200;
     let multiplierKind = parseFloat(localStorage.getItem('multiplierKind')) || 16800;
     
     document.getElementById('rate_cash').value = multiplierCash;
     document.getElementById('rate_kind').value = multiplierKind;
 
-    let currentLand = 0; let editModeId = null;
+    let currentLand = 0; 
+    let editModeId = null;
+
+    // Set Current Date by Default
     document.getElementById('l_date').valueAsDate = new Date();
 
     function fetchFarmerForLoan() {
@@ -176,7 +309,6 @@
     }
 
     function addRow(preData = null) {
-        // Section 3: Seeds removed, IR64 and MTU1010 added
         const row = `<tr>
             <td><select class="row-item">
                 <option value="यूरिया" ${preData && preData.desc=='यूरिया'?'selected':''}>यूरिया</option>
@@ -189,7 +321,7 @@
             <td><input type="number" class="row-qty" oninput="calcRow(this)" value="${preData ? preData.qty : 0}"></td>
             <td><input type="number" class="row-rate" oninput="calcRow(this)" value="${preData ? preData.rate : 0}"></td>
             <td class="row-total">${preData ? preData.total : '0.00'}</td>
-            <td><button onclick="this.parentElement.parentElement.remove(); updateGrand();" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
+            <td><button onclick="this.parentElement.parentElement.remove(); updateGrand();" style="color:var(--danger); border:none; background:none; cursor:pointer; font-weight:bold;">✖</button></td>
         </tr>`;
         document.getElementById('demandBody').insertAdjacentHTML('beforeend', row);
         if(preData) updateGrand();
@@ -234,12 +366,20 @@
         });
         const timestamp = editModeId ? editModeId : Date.now();
         const data = {
-            acc: acc, date: document.getElementById('l_date').value, name: document.getElementById('l_name').value,
-            season: document.getElementById('l_season').value, cheque: document.getElementById('s_cheque').value, 
-            cash_amt: document.getElementById('s_cash').value, share_amt: document.getElementById('s_share').value,
-            ins_amt: document.getElementById('s_insurance').value, net_amt: document.getElementById('s_net_payment').value,
-            permit: document.getElementById('s_permit').value, kind_amt: document.getElementById('s_kind').value, 
-            total_amt: document.getElementById('s_total').value, crop: document.getElementById('l_crop_type').value, items: items
+            acc: acc, 
+            date: document.getElementById('l_date').value, 
+            name: document.getElementById('l_name').value,
+            season: document.getElementById('l_season').value, 
+            cheque: document.getElementById('s_cheque').value, 
+            cash_amt: document.getElementById('s_cash').value, 
+            share_amt: document.getElementById('s_share').value,
+            ins_amt: document.getElementById('s_insurance').value, 
+            net_amt: document.getElementById('s_net_payment').value,
+            permit: document.getElementById('s_permit').value, 
+            kind_amt: document.getElementById('s_kind').value, 
+            total_amt: document.getElementById('s_total').value, 
+            crop: document.getElementById('l_crop_type').value, 
+            items: items
         };
         db.ref('lamps/loans/' + acc + '/' + timestamp).set(data).then(() => {
             swal("सफलता", editModeId ? "डेटा अपडेट हो गया" : "डेटा सुरक्षित हो गया", "success").then(() => location.reload());
@@ -248,56 +388,64 @@
 
     async function fetchKisanStatus() {
         const tbody = document.getElementById('statusTableBody');
-        tbody.innerHTML = "<tr><td colspan='9'>सिंक हो रहा है...</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='8'>सिंक हो रहा है...</td></tr>";
         const fSnap = await db.ref('lamps/farmers').once('value');
         const lSnap = await db.ref('lamps/loans').once('value');
-        if(!fSnap.exists()) return tbody.innerHTML = "<tr><td colspan='9'>डेटा नहीं मिला।</td></tr>";
+        if(!fSnap.exists()) return tbody.innerHTML = "<tr><td colspan='8'>डेटा नहीं मिला।</td></tr>";
         const farmers = fSnap.val(); const loans = lSnap.val() || {};
         let t = 0, p = 0, c = 0; tbody.innerHTML = "";
         Object.keys(farmers).forEach(acc => {
             t++; const f = farmers[acc]; const hasL = loans[acc];
             if(hasL) c++; else p++;
-            tbody.innerHTML += `<tr><td>${t}</td><td><b>${acc}</b></td><td>${f.name}</td><td>${f.fname || '-'}</td><td>${f.vill || '-'}</td><td>${f.cat || '-'}</td><td>${f.mobile || '-'}</td>
+            tbody.innerHTML += `<tr><td>${t}</td><td><b>${acc}</b></td><td>${f.name}</td><td>${f.vill || '-'}</td><td>${f.cat || '-'}</td><td>${f.mob || '-'}</td>
             <td><span class="status-badge ${hasL?'complete':'pending'}">${hasL?'पूर्ण':'लंबित'}</span></td>
-            <td>${hasL?`<button class="btn-edit" onclick="editLoanData('${acc}', '${Object.keys(hasL).pop()}')">📝 View/Edit</button>`:'-'}</td></tr>`;
+            <td>${hasL?`<button class="act-icon" onclick="editLoanData('${acc}', '${Object.keys(hasL).pop()}')">✏️</button>`:'-'}</td></tr>`;
         });
-        document.getElementById('stat_total').innerText=t; document.getElementById('stat_pending').innerText=p; document.getElementById('stat_complete').innerText=c;
+        document.getElementById('stat_total').innerText=t; 
+        document.getElementById('stat_pending').innerText=p; 
+        document.getElementById('stat_complete').innerText=c;
     }
 
     async function editLoanData(acc, key) {
-        db.ref(`lamps/loans/${acc}/${key}`).once('value', async snap => {
+        db.ref(`lamps/loans/${acc}/${key}`).once('value', snap => {
             const d = snap.val();
             editModeId = key;
+            
+            // Fixed Logic: Display the record's specific date in report/form
+            if(d.date) {
+                document.getElementById('l_date').value = d.date;
+            }
+
             document.getElementById('loan_search_acc').value = acc;
             fetchFarmerForLoan();
-            document.getElementById('l_date').value = d.date;
-            document.getElementById('s_cheque').value = d.cheque;
-            document.getElementById('s_cash').value = d.cash_amt;
+            
+            document.getElementById('s_cheque').value = d.cheque || '';
+            document.getElementById('s_cash').value = d.cash_amt || 0;
             document.getElementById('s_share').value = d.share_amt || 0;
             document.getElementById('s_insurance').value = d.ins_amt || 0;
-            document.getElementById('s_permit').value = d.permit;
+            document.getElementById('s_permit').value = d.permit || '';
             document.getElementById('demandBody').innerHTML = "";
             if(d.items) d.items.forEach(i => addRow(i));
             updateGrand();
+            
             document.getElementById('btn-save-loan').innerText = "🔄 डेटा अपडेट करें";
-            window.scrollTo(0,0);
+            document.getElementById('btn-save-loan').style.background = "#2563eb";
+            window.scrollTo({top: 0, behavior: 'smooth'});
         });
     }
 
     function openConfig() { document.getElementById('configModal').style.display = 'flex'; }
-    
     function applyRates() { 
-        const newCash = parseFloat(document.getElementById('rate_cash').value);
-        const newKind = parseFloat(document.getElementById('rate_kind').value);
-        multiplierCash = newCash;
-        multiplierKind = newKind;
-        localStorage.setItem('multiplierCash', newCash);
-        localStorage.setItem('multiplierKind', newKind);
+        multiplierCash = parseFloat(document.getElementById('rate_cash').value);
+        multiplierKind = parseFloat(document.getElementById('rate_kind').value);
+        localStorage.setItem('multiplierCash', multiplierCash);
+        localStorage.setItem('multiplierKind', multiplierKind);
         updateLimits(); 
         document.getElementById('configModal').style.display = 'none'; 
         swal("Updated", "नयी दरें सुरक्षित कर दी गयी हैं।", "success");
     }
     
+    // Auto sync on load
     fetchKisanStatus();
 </script>
 </body>

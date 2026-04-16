@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Editor - A4 Print Layout</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.7.0/tinymce.min.js"></script>
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root { --primary-blue: #1a73e8; }
+        body { font-family: 'Tiro Devanagari Hindi', serif; background-color: #525659; margin: 0; padding: 0; }
+
+        /* Top Navigation Bar */
+        .top-bar {
+            position: fixed; top: 0; left: 0; right: 0; height: 60px;
+            background: #ffffff; display: flex; align-items: center; 
+            padding-left: 30px; gap: 15px; z-index: 2000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        /* Side Vertical Toolbar for TinyMCE */
+        #toolbar-container {
+            position: fixed; top: 70px; right: 10px;
+            width: 120px; height: calc(100vh - 100px);
+            z-index: 2100; background: #fff;
+            border-radius: 8px; border: 1px solid #ddd;
+            box-shadow: -2px 0 15px rgba(0,0,0,0.2);
+            overflow-y: auto;
+        }
+
+        /* Editor Layout Container */
+        .container { 
+            margin-top: 80px; display: flex; flex-direction: column; 
+            align-items: center; gap: 20px; padding-bottom: 50px; 
+            padding-right: 140px; 
+        }
+        
+        /* Fixed A4 Page Style */
+        .page {
+            background: white; 
+            width: 210mm; 
+            height: 297mm; /* Fixed height for A4 layout */
+            padding: 20mm; 
+            box-sizing: border-box; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            outline: none; 
+            cursor: text;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .btn-ui { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-family: inherit; color: white; font-size: 13px; }
+        .btn-db { background: #5f6368; }
+        .btn-template { background: #673ab7; }
+        .btn-print { background: #2e7d32; }
+
+        /* TinyMCE Visual Tweaks */
+        .tox-toolbar { flex-direction: column !important; align-items: center !important; }
+        .tox-notification, .tox-statusbar__branding, .tox-promotion { display: none !important; }
+
+        /* --- STICKY PRINT LAYOUT FIX --- */
+        @media print {
+            @page { 
+                size: A4; 
+                margin: 0; 
+            }
+            body { background: white !important; }
+            .top-bar, #toolbar-container { display: none !important; }
+            .container { margin: 0 !important; padding: 0 !important; display: block !important; }
+            
+            .page { 
+                box-shadow: none !important; 
+                margin: 0 !important; 
+                width: 210mm !important; 
+                height: 297mm !important;
+                padding: 20mm !important; /* Printing margins */
+                page-break-after: always; 
+                display: block !important;
+            }
+
+            /* Automatically hide pages with no content during print */
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <span style="font-weight: bold;">Group Data:</span>
+        <select id="groupSelect" style="padding:5px; border-radius:4px; border:1px solid #ccc;">
+            <option value="group1">Archive Group 1</option>
+            <option value="group2">Archive Group 2</option>
+        </select>
+        <button class="btn-ui btn-db" onclick="loadFirebaseData()"><i class="fa fa-sync"></i> Load</button>
+        <button class="btn-ui btn-template" onclick="saveAsTemplate()"><i class="fa fa-save"></i> Save Template</button>
+        <button class="btn-ui btn-print" onclick="handlePrint()"><i class="fa fa-print"></i> Print Letter</button>
+    </div>
+
+    <div id="toolbar-container"></div>
+
+    <div class="container" id="editor-wrapper">
+        <div class="page floating-editor" id="page1"></div>
+        <div class="page floating-editor" id="page2"></div>
+        <div class="page floating-editor" id="page3"></div>
+        <div class="page floating-editor" id="page4"></div>
+        <div class="page floating-editor" id="page5"></div>
+    </div>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCp3N3FWECu-i4huDcWqn4RsQvThpbQjHo",
+            authDomain: "societydb.firebaseapp.com",
+            databaseURL: "https://societydb-default-rtdb.firebaseio.com",
+            projectId: "societydb"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // TinyMCE Vertical Right Initialization
+        tinymce.init({
+            selector: '.floating-editor',
+            inline: true,
+            fixed_toolbar_container: '#toolbar-container',
+            plugins: 'table lists link image charmap searchreplace visualblocks code insertdatetime media wordcount',
+            toolbar: 'undo redo | fontfamily fontsize | bold italic underline | alignleft aligncenter alignright | bullist numlist | table | removeformat',
+            menubar: false,
+            content_style: "body { font-family: 'Tiro Devanagari Hindi', serif; font-size: 18px; }",
+            setup: function (editor) {
+                // TAB Key Enable (4 Spaces)
+                editor.on('keydown', function (e) {
+                    if (e.keyCode === 9) {
+                        e.preventDefault();
+                        editor.execCommand('mceInsertContent', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
+                    }
+                });
+
+                editor.on('init', function () {
+                    const saved = localStorage.getItem('lamps_template_' + editor.id);
+                    if (saved) editor.setContent(saved);
+                });
+            }
+        });
+
+        // Smart Print Logic: Filter blank pages and fit to A4
+        function handlePrint() {
+            const pages = document.querySelectorAll('.page');
+            pages.forEach(page => {
+                const editor = tinymce.get(page.id);
+                // Check if page has any meaningful content
+                const contentText = editor.getContent({format: 'text'}).trim();
+                const hasImages = page.querySelectorAll('img').length > 0;
+                const hasTables = page.querySelectorAll('table').length > 0;
+
+                if (contentText === "" && !hasImages && !hasTables) {
+                    page.classList.add('no-print');
+                } else {
+                    page.classList.remove('no-print');
+                }
+            });
+
+            window.print();
+
+            // Restore visibility after print dialog
+            setTimeout(() => {
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('no-print'));
+            }, 1000);
+        }
+
+        function loadFirebaseData() {
+            const grp = document.getElementById('groupSelect').value;
+            db.ref(`report_archive/${grp}`).once('value', (snap) => {
+                if(snap.exists()){
+                    const d = snap.val();
+                    const info = `<p><b>कुल ऋण:</b> ₹${d.kul_rin || '0.00'} | <b>साख सीमा:</b> ₹${d.kul_sakh_sima || '0.00'}</p>`;
+                    if (tinymce.activeEditor) {
+                        tinymce.activeEditor.insertContent(info);
+                        swal("Success", "Data cursor position par load ho gaya.", "success");
+                    } else {
+                        swal("Alert", "Pehle page par click karein jahan data dalna hai.", "warning");
+                    }
+                }
+            });
+        }
+
+        function saveAsTemplate() {
+            tinymce.get().forEach((editor) => {
+                localStorage.setItem('lamps_template_' + editor.id, editor.getContent());
+            });
+            swal("Saved", "Aapka format template ke roop mein save ho gaya!", "success");
+        }
+    </script>
+</body>
+</html>

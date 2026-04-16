@@ -12,7 +12,6 @@
         :root { --primary: #0f172a; --accent: #6366f1; --danger: #ef4444; --success: #10b981; --warning: #f59e0b; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #f1f5f9; padding: 20px; margin: 0; }
         .group-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 30px; border-top: 4px solid var(--accent); }
-        /* Added for header layout */
         .group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
         th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: center; }
@@ -22,25 +21,13 @@
         .btn-delete { background: var(--danger); }
         .btn-summary { background: #f59e0b; width: 100%; margin-top: 10px; font-size: 14px; }
         .btn-excel { background: #1d6f42; }
-
-        /* Status Select Styling */
         .status-select { padding: 8px; border-radius: 6px; border: 2px solid #ddd; font-weight: bold; cursor: pointer; outline: none; background: white; }
-
         #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; overflow-y: auto; padding: 20px; }
         .modal-content { background: white; width: 99%; max-width: 1650px; margin: auto; padding: 25px; border-radius: 8px; }
-
         .ritz-table { width: 100%; border-collapse: collapse; margin-top: 10px; color: black; border: 1.5px solid #000; table-layout: fixed; }
-        .ritz-table th, .ritz-table td { 
-            border: 1px solid #000; 
-            padding: 2px; 
-            font-size: 12px; 
-            text-align: center; 
-            word-wrap: break-word; 
-            font-family: "Arial Narrow", Arial, sans-serif; 
-        }
+        .ritz-table th, .ritz-table td { border: 1px solid #000; padding: 2px; font-size: 12px; text-align: center; word-wrap: break-word; font-family: "Arial Narrow", Arial, sans-serif; }
         .footer-notes { text-align: left; margin-top: 20px; font-size: 14px; font-weight: bold; line-height: 1.8; color: #000; }
         .header-selects { margin-bottom: 15px; display: flex; justify-content: center; gap: 15px; }
-
         @media print {
             @page { size: landscape; margin: 5mm; }
             html, body { background: white !important; padding: 0 !important; margin: 0 !important; }
@@ -95,7 +82,6 @@
     function renderGroupTable(name, reports, container) {
         let rows = "";
         const currentStatus = reports[0].group_status || "समिति में लंबित";
-        
         reports.reverse().forEach((r, i) => {
             rows += `<tr><td>${i+1}</td><td>${r.gen_date}</td><td>${r.group_name}</td><td>${r.crop_name}</td><td>${r.items.length}</td>
             <td><button class="btn btn-edit" onclick="editReport('${r.id}')">📝 Edit & View</button>
@@ -154,7 +140,6 @@
             const land = parseFloat(item.land) || 0;
             const farmerLoans = loanData[item.acc] || {};
             const dbLoan = farmerLoans[Object.keys(farmerLoans).pop()] || {};
-
             const cheque = dbLoan.cheque || '-';
             const permit = dbLoan.permit || '-';
             const share = parseFloat(item.share) || parseFloat(dbLoan.share_amt) || 0;
@@ -212,7 +197,6 @@
                     <div>समिति प्रबंधक</div><div>अध्यक्ष</div>
                 </div>
             </div>`;
-        
         swal.close();
         document.getElementById('modal-overlay').style.display = "block";
     }
@@ -225,18 +209,37 @@
         cropsList.forEach(c => cropSum[c] = {c:0, r:0, nc:0, nv:0});
 
         let gt = {c:0, r:0, nc:0, nv:0, s:0};
+        let summary_gt_lc = 0, summary_gt_lk = 0;
 
         Object.values(allReports).filter(r => r.report_name === reportGroupName).forEach(r => {
             const cat = r.group_name; 
             const cName = r.crop_name || "अन्य फसल";
             r.items.forEach(i => {
                 const l = parseFloat(i.land) || 0; const c = parseFloat(i.cash) || 0; const k = parseFloat(i.kind) || 0; const s = parseFloat(i.share) || 0;
-                if(summary[cat]) { summary[cat].c++; summary[cat].r += l; summary[cat].lc += Math.round(l*25200); summary[cat].lk += Math.round(l*16800); summary[cat].nc += c; summary[cat].nv += k; summary[cat].s += s; }
-                
+                if(summary[cat]) { 
+                    summary[cat].c++; 
+                    summary[cat].r += l; 
+                    let slc = Math.round(l*25200), slk = Math.round(l*16800);
+                    summary[cat].lc += slc; summary[cat].lk += slk; 
+                    summary[cat].nc += c; summary[cat].nv += k; summary[cat].s += s;
+                    summary_gt_lc += slc; summary_gt_lk += slk;
+                }
                 let targetCrop = cropsList.includes(cName) ? cName : "अन्य फसल";
                 cropSum[targetCrop].c++; cropSum[targetCrop].r += l; cropSum[targetCrop].nc += c; cropSum[targetCrop].nv += k;
             });
         });
+
+        // Save data to database for Master Editor
+        const summaryDataToSave = {
+            total_loan: (gt.nc + gt.nv).toFixed(2),
+            total_limit: (summary_gt_lc + summary_gt_lk).toFixed(2),
+            adivasi1_loan: summary["आदिवासी 01"] ? (summary["आदिवासी 01"].nc + summary["आदिवासी 01"].nv).toFixed(2) : "0.00",
+            adivasi2_loan: summary["आदिवासी 02"] ? (summary["आदिवासी 02"].nc + summary["आदिवासी 02"].nv).toFixed(2) : "0.00",
+            samanya1_loan: summary["सामान्य 01"] ? (summary["सामान्य 01"].nc + summary["सामान्य 01"].nv).toFixed(2) : "0.00",
+            samanya2_loan: summary["सामान्य 02"] ? (summary["सामान्य 02"].nc + summary["सामान्य 02"].nv).toFixed(2) : "0.00",
+            save_date: today
+        };
+        db.ref(`lamps/goshwara_summary/${reportGroupName}`).set(summaryDataToSave);
 
         let mainRows = ""; let sno = 1;
         Object.keys(summary).forEach(k => {
@@ -268,7 +271,7 @@
                     <tr><th>नगद</th><th>वस्तु</th><th>योग</th><th>नगद</th><th>वस्तु</th><th>योग</th></tr>
                 </thead>
                 <tbody>${mainRows}</tbody>
-                <tfoot style="font-weight:bold; background:#ccc;"><tr><td colspan="2">कुल योग</td><td>${gt.c}</td><td>${gt.r.toFixed(2)}</td><td>-</td><td>-</td><td>-</td><td>${gt.nc}</td><td>${gt.nv}</td><td>${gt.nc+gt.nv}</td><td>${gt.s}</td><td>${gt.nc-gt.s}</td><td>-</td></tr></tfoot>
+                <tfoot style="font-weight:bold; background:#ccc;"><tr><td colspan="2">कुल योग</td><td>${gt.c}</td><td>${gt.r.toFixed(2)}</td><td>${summary_gt_lc}</td><td>${summary_gt_lk}</td><td>${summary_gt_lc + summary_gt_lk}</td><td>${gt.nc}</td><td>${gt.nv}</td><td>${gt.nc+gt.nv}</td><td>${gt.s}</td><td>${gt.nc-gt.s}</td><td>-</td></tr></tfoot>
             </table>
             
             <div style="display:flex; justify-content:space-between; margin-top:20px;">

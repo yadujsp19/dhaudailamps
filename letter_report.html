@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Letter Archive Report | LAMPS Dhoudai</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #7b2cbf;
+            --secondary: #d00067;
+            --bg: #f4f7fe;
+        }
+        body { font-family: 'Inter', 'Noto Sans Devanagari', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+        
+        .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        
+        .report-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
+        .report-header h2 { margin: 0; color: #1a365d; display: flex; align-items: center; gap: 10px; }
+
+        /* Search Box */
+        .search-box { position: relative; width: 300px; }
+        .search-box input { width: 100%; padding: 12px 40px 12px 15px; border: 1px solid #e2e8f0; border-radius: 12px; outline: none; transition: 0.3s; }
+        .search-box i { position: absolute; right: 15px; top: 15px; color: #a0aec0; }
+        .search-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(123, 44, 191, 0.1); }
+
+        /* Table Style */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #f8fafc; color: #4a5568; font-weight: 600; text-align: left; padding: 15px; border-bottom: 2px solid #edf2f7; }
+        td { padding: 15px; border-bottom: 1px solid #edf2f7; font-size: 15px; color: #2d3748; }
+        tr:hover { background: #fdf2f8; }
+
+        .badge { padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; background: #ebf8ff; color: #2b6cb0; }
+        
+        .btn-view { padding: 8px 15px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+        .btn-view:hover { opacity: 0.9; }
+
+        /* Loader */
+        #loader { text-align: center; padding: 50px; color: var(--text-muted); }
+
+        @media print {
+            .search-box, .btn-view { display: none; }
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="report-header">
+        <h2><i class="fa-solid fa-file-invoice"></i> जावक पत्र रजिस्टर (Correspondence Report)</h2>
+        <div class="search-box">
+            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="क्रमांक या विषय खोजें...">
+            <i class="fa-solid fa-magnifying-glass"></i>
+        </div>
+    </div>
+
+    <div id="loader"><i class="fa-solid fa-spinner fa-spin"></i> डेटा लोड हो रहा है...</div>
+
+    <table id="reportTable" style="display: none;">
+        <thead>
+            <tr>
+                <th>जावक क्रमांक</th>
+                <th>दिनांक</th>
+                <th>प्रति (Receiver)</th>
+                <th>विषय (Subject)</th>
+                <th>कार्यवाही</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            </tbody>
+    </table>
+</div>
+
+<script>
+    // Firebase Configuration (Same as your dashboard)
+    const firebaseConfig = {
+        apiKey: "AIzaSyCp3N3FWECu-i4huDcWqn4RsQvThpbQjHo",
+        authDomain: "societydb.firebaseapp.com",
+        databaseURL: "https://societydb-default-rtdb.firebaseio.com",
+        projectId: "societydb",
+        storageBucket: "societydb.firebasestorage.app",
+        messagingSenderId: "1016342848711",
+        appId: "1:1016342848711:web:f5f804f5c89f86ab040ae2"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Fetch Data from Firebase
+    const tableBody = document.getElementById('tableBody');
+    const loader = document.getElementById('loader');
+    const table = document.getElementById('reportTable');
+
+    db.ref('outward_letters').orderByChild('timestamp').on('value', (snapshot) => {
+        tableBody.innerHTML = "";
+        if (snapshot.exists()) {
+            let letters = [];
+            snapshot.forEach((childSnapshot) => {
+                letters.push(childSnapshot.val());
+            });
+
+            // Reverse to show latest first
+            letters.reverse().forEach((data) => {
+                const row = `
+                    <tr>
+                        <td><span class="badge">${data.kramank}</span></td>
+                        <td>${data.date}</td>
+                        <td><strong>${data.receiver.substring(0, 30)}...</strong></td>
+                        <td>${data.subject.substring(0, 50)}...</td>
+                        <td>
+                            <button class="btn-view" onclick="viewFullLetter('${data.kramank}')">
+                                <i class="fa-solid fa-eye"></i> देखें
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+
+            loader.style.display = "none";
+            table.style.display = "table";
+        } else {
+            loader.innerHTML = "कोई रिकॉर्ड नहीं मिला।";
+        }
+    });
+
+    // Search/Filter Function
+    function filterTable() {
+        let input = document.getElementById("searchInput").value.toUpperCase();
+        let tr = tableBody.getElementsByTagName("tr");
+        for (let i = 0; i < tr.length; i++) {
+            let tdKramank = tr[i].getElementsByTagName("td")[0];
+            let tdSubject = tr[i].getElementsByTagName("td")[3];
+            if (tdKramank || tdSubject) {
+                let textValue = (tdKramank.textContent || tdKramank.innerText) + (tdSubject.textContent || tdSubject.innerText);
+                if (textValue.toUpperCase().indexOf(input) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    }
+
+    // Function to View/Re-print (Future Scope)
+    function viewFullLetter(id) {
+        alert("क्रमांक " + id + " का पूरा विवरण देखने के लिए नया मॉड्यूल लोड हो रहा है...");
+        // Yahan aap window.location.href se detail page par bhej sakte hain
+    }
+</script>
+
+</body>
+</html>

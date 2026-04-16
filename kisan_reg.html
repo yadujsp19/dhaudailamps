@@ -3,155 +3,338 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Kisan Panjiyan | LAMPS</title>
+    <title>Professional Kisan Panjiyan | LAMPS Dhoudai</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+    
     <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
-    
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
-        :root { --brand: #10b981; --primary: #0f172a; --bg: #f8fafc; --border: #e2e8f0; --white: #ffffff; }
+        :root { 
+            /* Theme Colors Applied */
+            --brand: #7C3AED;      /* Deep Purple */
+            --brand-hover: #6D28D9;
+            --brand-light: #F3E8FF; /* Light Lavender */
+            --pink-accent: #EC4899; /* Pink Accent */
+            --primary: #6B21A8;    /* Title Purple */
+            --secondary: #64748b;
+            --bg: #FAF5FF;         /* Main Page BG */
+            --white: #ffffff;
+            --border: #E9D5FF;     /* Purple Border */
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', 'Noto Sans Devanagari', sans-serif; background: var(--bg); padding: 20px; color: var(--primary); }
 
-        .card { background: var(--white); border-radius: 12px; border: 1px solid var(--border); padding: 25px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        h2 { text-align: center; color: var(--brand); margin-bottom: 25px; font-size: 22px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
-        h4 { background: #f1f5f9; padding: 10px 15px; border-radius: 6px; margin: 25px 0 15px; font-size: 14px; border-left: 4px solid var(--brand); }
+        body { 
+            font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', sans-serif; 
+            background: var(--bg); 
+            padding: 20px; 
+            color: #111827;
+            line-height: 1.6;
+        }
 
-        .search-area { display: flex; gap: 10px; margin-bottom: 25px; background: #ecfdf5; padding: 15px; border-radius: 10px; border: 1px solid #a7f3d0; }
-        .search-area input { flex: 1; padding: 12px; border: 1px solid #6ee7b7; border-radius: 8px; outline: none; }
-        .btn-search { background: var(--primary); color: white; border: none; padding: 0 25px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .container { max-width: 1100px; margin: 0 auto; }
 
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
-        .field label { display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px; text-transform: uppercase; }
-        input, select { width: 100%; padding: 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; outline: none; background: #fff; }
-        input:focus { border-color: var(--brand); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
-        input[readonly] { background: #f1f5f9; cursor: not-allowed; }
+        /* Header Card with Dashboard Gradient */
+        .header-card {
+            background: linear-gradient(135deg, #6D28D9, #EC4899);
+            color: white;
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+        }
 
-        .other-input { margin-top: 10px; border-style: dashed; border-color: var(--brand); display: none; background: #fff7ed; }
+        .header-card h2 { font-size: 28px; margin-bottom: 5px; letter-spacing: -0.5px; }
+        .header-card p { opacity: 0.9; font-size: 14px; }
 
-        .btn-save { background: var(--brand); color: white; width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; margin-top: 30px; font-size: 16px; transition: 0.3s; }
-        .btn-save:hover { background: #059669; }
+        /* Main Form Card */
+        .card { 
+            background: var(--white); 
+            border-radius: 16px; 
+            padding: 30px; 
+            margin-bottom: 25px; 
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
 
-        .table-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); max-height: 500px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 2500px; background: white; }
-        th { background: #f8fafc; padding: 12px; text-align: left; font-size: 11px; font-weight: 700; color: #64748b; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--border); }
-        td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 13px; color: #334155; }
+        h4 { 
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--brand-light); 
+            color: var(--primary);
+            padding: 12px 18px; 
+            border-radius: 10px; 
+            margin: 35px 0 20px; 
+            font-size: 15px; 
+            font-weight: 700;
+        }
+        h4::before { content: ''; width: 4px; height: 18px; background: var(--pink-accent); border-radius: 4px; }
+
+        /* Modern Search Area */
+        .search-container {
+            background: var(--bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px dashed var(--brand);
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-container input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .btn-search {
+            background: var(--brand);
+            color: white;
+            border: none;
+            padding: 0 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+        .btn-search:hover { background: var(--primary); }
+
+        /* Grid Layout */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+            gap: 20px; 
+        }
+
+        .field { margin-bottom: 5px; }
+        .field label { 
+            display: block; 
+            font-size: 13px; 
+            font-weight: 600; 
+            color: var(--primary); 
+            margin-bottom: 6px; 
+        }
+
+        input, select { 
+            width: 100%; 
+            padding: 11px 14px; 
+            border: 1.5px solid var(--border); 
+            border-radius: 8px; 
+            font-size: 14px; 
+            background: #fff; 
+            transition: 0.2s;
+        }
+
+        input:focus, select:focus { 
+            border-color: var(--pink-accent); 
+            box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1); 
+            outline: none;
+        }
+
+        input[readonly] { background: var(--bg); cursor: not-allowed; }
+
+        .other-input { margin-top: 10px; border-style: dashed; border-color: var(--pink-accent); display: none; background: #fff; }
+
+        /* Save Button */
+        .btn-save { 
+            background: var(--pink-accent); 
+            color: white; 
+            width: 100%; 
+            padding: 16px; 
+            border: none; 
+            border-radius: 12px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            margin-top: 40px; 
+            font-size: 16px; 
+            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.2);
+            transition: 0.3s;
+        }
+        .btn-save:hover { background: #DB2777; transform: translateY(-1px); }
+
+        /* Table Design */
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .table-wrap { 
+            overflow-x: auto; 
+            border-radius: 12px; 
+            border: 1px solid var(--border); 
+            max-height: 600px;
+        }
+
+        table { width: 100%; border-collapse: collapse; min-width: 1400px; background: white; }
         
-        .action-btns { display: flex; gap: 5px; }
-        .act-link { cursor: pointer; font-weight: 700; font-size: 11px; padding: 6px 10px; border-radius: 6px; border: none; }
-        .edit { color: #6366f1; background: #eef2ff; }
-        .del { color: #ef4444; background: #fef2f2; }
-        .down { color: #10b981; background: #ecfdf5; }
-        .btn-full-down { background: #10b981; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; }
+        th { 
+            background: var(--bg-light); 
+            padding: 14px; 
+            text-align: left; 
+            font-size: 12px; 
+            font-weight: 700; 
+            color: var(--primary); 
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--border);
+            position: sticky; top: 0; z-index: 10;
+        }
+
+        td { padding: 14px; border-bottom: 1px solid var(--bg); font-size: 13.5px; }
+
+        tr:nth-child(even) { background: var(--bg); }
+        tr:hover { background: var(--bg-light); }
+
+        /* Action Icons */
+        .action-btns { display: flex; gap: 6px; }
+        .act-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .edit-icon { background: var(--bg-light); color: var(--brand); }
+        .down-icon { background: #ecfdf5; color: #059669; }
+        .del-icon { background: #fef2f2; color: #dc2626; }
+
+        .btn-full-down {
+            background: var(--brand);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            .grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>🚜 किसान पंजीयन फॉर्म</h2>
+<div class="container">
     
-    <div class="search-area">
-        <input type="text" id="search_acc_input" placeholder="बैंक खाता नंबर डालकर खोजें...">
-        <button class="btn-search" onclick="searchFarmer()">🔍 Search</button>
+    <div class="header-card">
+        <h2>🚜 किसान पंजीयन पोर्टल</h2>
+        <p>LAMPS धौड़ाई - सहकारी समिति प्रबंधन प्रणाली</p>
     </div>
 
-    <div class="grid">
-        <div class="field"><label>पंजीयन दिनांक</label><input type="date" id="reg_date"></div>
-        <div class="field"><label>सदस्यता क्रमांक</label><input type="text" id="membership_id"></div>
-    </div>
-
-    <h4>1. किसान की व्यक्तिगत जानकारी</h4>
-    <div class="grid">
-        <div class="field"><label>बैंक खाता नंबर *</label><input type="text" id="k_acc"></div>
-        <div class="field"><label>किसान का नाम *</label><input type="text" id="k_name"></div>
-        <div class="field"><label>पिता का नाम</label><input type="text" id="k_fname"></div>
-        <div class="field"><label>जन्मतिथि</label><input type="date" id="k_dob"></div>
-        <div class="field">
-            <label>ग्राम *</label>
-            <select id="k_vill" onchange="toggleOther(this, 'other_vill_box')">
-                <option value="धौड़ाई">धौड़ाई</option><option value="तारागांव">तारागांव</option>
-                <option value="बडगांव">बडगांव</option><option value="कन्हारगांव">कन्हारगांव</option>
-                <option value="टेमरूगाँव">टेमरूगाँव</option><option value="पल्ली">पल्ली</option>
-                <option value="छोटेकुम्हारी">छोटेकुम्हारी</option><option value="Other">अन्य...</option>
-            </select>
-            <input type="text" id="other_vill_box" class="other-input" placeholder="नया ग्राम लिखें">
+    <div class="card">
+        <div class="search-container">
+            <input type="text" id="search_acc_input" placeholder="बैंक खाता नंबर डालकर खोजें...">
+            <button class="btn-search" onclick="searchFarmer()">🔍 Search Record</button>
         </div>
-        <div class="field">
-            <label>जाति</label>
-            <select id="k_caste" onchange="toggleOther(this, 'other_caste_box')">
-                <option value="गोंड">गोंड</option><option value="हल्बा">हल्बा</option>
-                <option value="कलार">कलार</option><option value="मरार">मरार</option>
-                <option value="गांडा">गांडा</option><option value="पनका">पनका</option>
-                <option value="अहीर">अहीर</option><option value="रावत">रावत</option><option value="Other">अन्य...</option>
-            </select>
-            <input type="text" id="other_caste_box" class="other-input" placeholder="नई जाति लिखें">
+
+        <div class="grid">
+            <div class="field"><label>पंजीयन दिनांक</label><input type="date" id="reg_date"></div>
+            <div class="field"><label>सदस्यता क्रमांक</label><input type="text" id="membership_id" placeholder="ID Number"></div>
         </div>
-        <div class="field"><label>वर्ग</label><select id="k_cat"><option>ST</option><option>SC</option><option>OBC</option><option>GEN</option></select></div>
-        <div class="field"><label>आधार नंबर</label><input type="number" id="k_aadhar"></div>
-        <div class="field"><label>मोबाइल नंबर</label><input type="number" id="k_mob"></div>
+
+        <h4>1. किसान की व्यक्तिगत जानकारी</h4>
+        <div class="grid">
+            <div class="field"><label>बैंक खाता नंबर *</label><input type="text" id="k_acc" placeholder="Account No."></div>
+            <div class="field"><label>किसान का नाम *</label><input type="text" id="k_name" placeholder="Farmer Name"></div>
+            <div class="field"><label>पिता का नाम</label><input type="text" id="k_fname" placeholder="Father Name"></div>
+            <div class="field"><label>जन्मतिथि</label><input type="date" id="k_dob"></div>
+            <div class="field">
+                <label>ग्राम *</label>
+                <select id="k_vill" onchange="toggleOther(this, 'other_vill_box')">
+                    <option value="धौड़ाई">धौड़ाई</option><option value="तारागांव">तारागांव</option>
+                    <option value="बडगांव">बडगांव</option><option value="कन्हारगांव">कन्हारगांव</option>
+                    <option value="टेमरूगाँव">टेमरूगाँव</option><option value="पल्ली">पल्ली</option>
+                    <option value="छोटेकुम्हारी">छोटेकुम्हारी</option><option value="Other">अन्य...</option>
+                </select>
+                <input type="text" id="other_vill_box" class="other-input" placeholder="नया ग्राम लिखें">
+            </div>
+            <div class="field">
+                <label>जाति</label>
+                <select id="k_caste" onchange="toggleOther(this, 'other_caste_box')">
+                    <option value="गोंड">गोंड</option><option value="हल्बा">हल्बा</option>
+                    <option value="कलार">कलार</option><option value="मरार">मरार</option>
+                    <option value="गांडा">गांडा</option><option value="पनका">पनका</option>
+                    <option value="अहीर">अहीर</option><option value="रावत">रावत</option><option value="Other">अन्य...</option>
+                </select>
+                <input type="text" id="other_caste_box" class="other-input" placeholder="नई जाति लिखें">
+            </div>
+            <div class="field"><label>वर्ग</label><select id="k_cat"><option>ST</option><option>SC</option><option>OBC</option><option>GEN</option></select></div>
+            <div class="field"><label>आधार नंबर</label><input type="text" id="k_aadhar" placeholder="[Aadhaar Omitted]"></div>
+            <div class="field"><label>मोबाइल नंबर</label><input type="number" id="k_mob" placeholder="Mobile"></div>
+        </div>
+
+        <h4>2. भूमि की जानकारी</h4>
+        <div class="grid">
+            <div class="field"><label>एग्रीस्टैक आईडी</label><input type="text" id="k_agri" placeholder="ID"></div>
+            <div class="field"><label>भूमि प्रकार</label><select id="k_land_type"><option>राजस्व</option><option>वन पट्टा</option></select></div>
+            <div class="field"><label>कुल भूमि (हेक्टेयर)</label><input type="number" step="0.01" id="k_total_land" placeholder="0.00"></div>
+            <div class="field"><label>कुल खसरा नंबर</label><input type="text" id="k_khasra" placeholder="Khasra"></div>
+            <div class="field"><label>धान का रकबा</label><input type="number" step="0.01" id="k_paddy_area" placeholder="0.00"></div>
+            <div class="field"><label>धान का खसरा</label><input type="text" id="k_paddy_khasra" placeholder="Paddy Khasra"></div>
+            <div class="field"><label>अन्य फसल का रकबा</label><input type="number" step="0.01" id="k_other_area" placeholder="0.00"></div>
+            <div class="field"><label>अन्य फसल का खसरा</label><input type="text" id="k_other_khasra" placeholder="Other Khasra"></div>
+        </div>
+
+        <h4>3. नॉमिनी की जानकारी</h4>
+        <div class="grid">
+            <div class="field"><label>नॉमिनी का नाम</label><input type="text" id="n_name" placeholder="Nominee Name"></div>
+            <div class="field"><label>किसान से संबंध</label><input type="text" id="n_rel" placeholder="Relation"></div>
+            <div class="field"><label>नॉमिनी आधार</label><input type="text" id="n_aadhar" placeholder="[Aadhaar Redacted]"></div>
+            <div class="field"><label>नॉमिनी मोबाइल</label><input type="number" id="n_mob" placeholder="Nominee Mobile"></div>
+        </div>
+
+        <button class="btn-save" id="save-btn" onclick="validateAndSave()">💾 सुरक्षित करें (Save Farmer Data)</button>
     </div>
 
-    <h4>2. भूमि की जानकारी</h4>
-    <div class="grid">
-        <div class="field"><label>एग्रीस्टैक आईडी</label><input type="text" id="k_agri"></div>
-        <div class="field"><label>भूमि प्रकार</label><select id="k_land_type"><option>राजस्व</option><option>वन पट्टा</option></select></div>
-        <div class="field"><label>कुल भूमि (हेक्टेयर)</label><input type="number" step="0.01" id="k_total_land"></div>
-        <div class="field"><label>कुल खसरा नंबर</label><input type="text" id="k_khasra"></div>
-        <div class="field"><label>धान का रकबा</label><input type="number" step="0.01" id="k_paddy_area"></div>
-        <div class="field"><label>धान का खसरा</label><input type="text" id="k_paddy_khasra"></div>
-        <div class="field"><label>अन्य फसल का रकबा</label><input type="number" step="0.01" id="k_other_area"></div>
-        <div class="field"><label>अन्य फसल का खसरा</label><input type="text" id="k_other_khasra"></div>
+    <div class="card">
+        <div class="table-header">
+            <h3>📋 पंजीकृत डेटाबेस</h3>
+            <button class="btn-full-down" onclick="downloadExcel()">📊 Export Full Excel</button>
+        </div>
+        <div class="table-wrap">
+            <table id="farmerMainTable">
+                <thead>
+                    <tr>
+                        <th>Date</th><th>ID</th><th>Account</th><th>Name</th><th>Father</th><th>DOB</th><th>Village</th><th>Caste</th><th>Cat</th><th>Aadhar</th><th>Mobile</th><th>AgriID</th><th>Land</th><th>Paddy</th><th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="farmerTableBody"></tbody>
+            </table>
+        </div>
     </div>
 
-    <h4>3. नॉमिनी की जानकारी</h4>
-    <div class="grid">
-        <div class="field"><label>नॉमिनी का नाम</label><input type="text" id="n_name"></div>
-        <div class="field"><label>किसान से संबंध</label><input type="text" id="n_rel"></div>
-        <div class="field"><label>नॉमिनी आधार</label><input type="number" id="n_aadhar"></div>
-        <div class="field"><label>नॉमिनी मोबाइल</label><input type="number" id="n_mob"></div>
-    </div>
-
-    <button class="btn-save" id="save-btn" onclick="validateAndSave()">💾 सुरक्षित करें (Save Farmer Data)</button>
-</div>
-
-<div class="card">
-    <div class="table-header-flex">
-        <h3>📋 पंजीकृत डेटाबेस</h3>
-        <button class="btn-full-down" onclick="downloadExcel()">📊 Download Full Database</button>
-    </div>
-    <div class="table-wrap">
-        <table id="farmerMainTable">
-            <thead>
-                <tr>
-                    <th>Reg Date</th><th>सदस्यता नं.</th><th>बैंक खाता</th><th>नाम</th><th>पिता</th><th>जन्मतिथि</th><th>ग्राम</th><th>जाति</th><th>वर्ग</th><th>आधार</th><th>मोबाइल</th><th>एग्रीस्टैक</th><th>भूमि</th><th>रकबा</th><th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="farmerTableBody"></tbody>
-        </table>
-    </div>
 </div>
 
 <script>
-    // 1. Firebase Initialize
-    const firebaseConfig = { 
-        databaseURL: "https://societydb-default-rtdb.firebaseio.com/" 
-    };
+    const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Default Date
     document.getElementById('reg_date').valueAsDate = new Date();
 
     function toggleOther(select, boxId) { 
         document.getElementById(boxId).style.display = (select.value === "Other") ? "block" : "none"; 
     }
 
-    // 2. Search Farmer
     function searchFarmer() {
         const acc = document.getElementById('search_acc_input').value.trim();
         if(!acc) return swal("Oops", "खाता नंबर डालें", "info");
@@ -165,7 +348,6 @@
         });
     }
 
-    // 3. Save / Update Data
     function validateAndSave() {
         const acc = document.getElementById('k_acc').value.trim();
         const name = document.getElementById('k_name').value.trim();
@@ -178,12 +360,10 @@
         const payload = {
             reg_date: document.getElementById('reg_date').value,
             membership_id: document.getElementById('membership_id').value,
-            acc: acc, 
-            name: name,
+            acc: acc, name: name,
             fname: document.getElementById('k_fname').value, 
             dob: document.getElementById('k_dob').value,
-            vill: vill, 
-            caste: caste, 
+            vill: vill, caste: caste, 
             cat: document.getElementById('k_cat').value,
             aadhar: document.getElementById('k_aadhar').value, 
             mob: document.getElementById('k_mob').value,
@@ -209,7 +389,6 @@
         });
     }
 
-    // 4. Real-time Listen for Table Update
     db.ref('lamps/farmers').on('value', snap => {
         const body = document.getElementById('farmerTableBody');
         body.innerHTML = "";
@@ -218,20 +397,19 @@
             body.innerHTML += `<tr>
                 <td>${d.reg_date}</td><td>${d.membership_id}</td><td><b>${d.acc}</b></td><td>${d.name}</td><td>${d.fname}</td><td>${d.dob}</td><td>${d.vill}</td><td>${d.caste}</td><td>${d.cat}</td><td>${d.aadhar}</td><td>${d.mob}</td><td>${d.agri}</td><td>${d.land_total}</td><td>${d.paddy_area}</td>
                 <td class="action-btns">
-                    <button class="act-link edit" onclick="editFarmer('${d.acc}')">EDIT</button>
-                    <button class="act-link down" onclick="downloadSingleExcel('${d.acc}')">XLS</button>
-                    <button class="act-link del" onclick="deleteFarmer('${d.acc}')">DEL</button>
+                    <button class="act-icon edit-icon" onclick="editFarmer('${d.acc}')" title="Edit">✏️</button>
+                    <button class="act-icon down-icon" onclick="downloadSingleExcel('${d.acc}')" title="Download XLS">📥</button>
+                    <button class="act-icon del-icon" onclick="deleteFarmer('${d.acc}')" title="Delete">🗑️</button>
                 </td>
             </tr>`;
         });
     });
 
-    // 5. Edit Helper
     function editFarmer(acc) {
         db.ref('lamps/farmers/' + acc).once('value', snap => {
             const d = snap.val();
             document.getElementById('k_acc').value = d.acc;
-            document.getElementById('k_acc').readOnly = true; // खाता नंबर नहीं बदल सकते
+            document.getElementById('k_acc').readOnly = true;
             document.getElementById('reg_date').value = d.reg_date;
             document.getElementById('membership_id').value = d.membership_id;
             document.getElementById('k_name').value = d.name;
@@ -254,12 +432,11 @@
             document.getElementById('n_mob').value = d.n_mob;
             
             document.getElementById('save-btn').innerText = "🆙 डेटा अपडेट करें (Update Data)";
-            document.getElementById('save-btn').style.background = "#6366f1";
+            document.getElementById('save-btn').style.background = "#7C3AED";
             window.scrollTo({top: 0, behavior: 'smooth'});
         });
     }
 
-    // 6. Delete Helper
     function deleteFarmer(id) {
         swal({ 
             title: "डेटा मिटाएं?", 
@@ -276,7 +453,6 @@
         });
     }
 
-    // 7. Excel Exports
     function downloadSingleExcel(acc) {
         db.ref('lamps/farmers/' + acc).once('value', snap => {
             const data = [snap.val()];
@@ -298,7 +474,7 @@
         document.getElementById('k_acc').readOnly = false;
         document.getElementById('reg_date').valueAsDate = new Date();
         document.getElementById('save-btn').innerText = "💾 सुरक्षित करें (Save Farmer Data)";
-        document.getElementById('save-btn').style.background = "#10b981";
+        document.getElementById('save-btn').style.background = "#EC4899";
     }
 </script>
 </body>

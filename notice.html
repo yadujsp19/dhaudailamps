@@ -8,28 +8,39 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
     <style>
-        :root { --brand: #6366f1; --dark: #0f172a; --bg: #f1f5f9; --success: #10b981; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); padding: 20px; }
+        :root { 
+            /* Theme Colors Applied */
+            --brand: #7C3AED;      /* Deep Purple */
+            --pink-accent: #EC4899; /* Pink Accent */
+            --dark: #111827;       /* Number text dark */
+            --bg-light: #F3E8FF;   /* Light Lavender */
+            --bg-page: #FAF5FF;    /* Main Page BG */
+            --border: #E9D5FF;     /* Card Border */
+        }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg-page); padding: 20px; }
         .container { max-width: 900px; margin: auto; }
-        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        h2 { color: var(--dark); border-left: 5px solid var(--brand); padding-left: 15px; margin-bottom: 20px; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid var(--border); }
+        h2 { color: #6B21A8; border-left: 5px solid var(--brand); padding-left: 15px; margin-bottom: 20px; }
         
-        textarea { width: 100%; height: 100px; padding: 15px; border: 2px solid #ddd; border-radius: 10px; outline: none; font-size: 15px; margin-bottom: 15px; box-sizing: border-box; }
-        .upload-area { border: 2px dashed #cbd5e1; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 15px; background: #f8fafc; cursor: pointer; }
+        textarea { width: 100%; height: 100px; padding: 15px; border: 2px solid var(--border); border-radius: 10px; outline: none; font-size: 15px; margin-bottom: 15px; box-sizing: border-box; background: var(--bg-page); }
+        textarea:focus { border-color: var(--pink-accent); background: white; }
+        
+        .upload-area { border: 2px dashed var(--border); padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 15px; background: var(--bg-page); cursor: pointer; }
         .btn { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; transition: 0.3s; }
-        .btn-post { background: var(--brand); width: 100%; font-size: 16px; }
+        .btn-post { background: var(--pink-accent); width: 100%; font-size: 16px; }
+        .btn-post:hover { background: #DB2777; }
         .btn-cancel { background: #64748b; margin-top: 10px; width: 100%; display: none; }
         
-        .notice-item { background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 5px solid var(--brand); position: relative; }
-        .notice-date { font-size: 11px; color: #64748b; margin-bottom: 8px; }
+        .notice-item { background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 5px solid var(--brand); position: relative; border: 1px solid var(--border); }
+        .notice-date { font-size: 11px; color: #7C3AED; margin-bottom: 8px; font-weight: 600; }
         .notice-msg { font-size: 16px; line-height: 1.6; color: var(--dark); margin-bottom: 10px; }
         .actions { display: flex; gap: 10px; margin-top: 10px; }
-        .attach-link { display: inline-flex; align-items: center; gap: 8px; background: #eef2ff; color: var(--brand); padding: 8px 15px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 13px; }
+        .attach-link { display: inline-flex; align-items: center; gap: 8px; background: var(--bg-light); color: var(--brand); padding: 8px 15px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 13px; border: 1px solid var(--border); }
         
-        .edit-btn { background: #f59e0b; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .del-btn { background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .edit-btn { background: var(--brand); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .del-btn { background: #EF4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         
-        #edit-indicator { display: none; background: #fffbeb; color: #92400e; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; font-weight: bold; border: 1px solid #fde68a; }
+        #edit-indicator { display: none; background: #FFFBEB; color: #92400E; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; font-weight: bold; border: 1px solid #FDE68A; }
     </style>
 </head>
 <body>
@@ -43,9 +54,9 @@
         <textarea id="n-msg" placeholder="नोटिस का विवरण यहाँ लिखें..."></textarea>
         
         <div class="upload-area" onclick="document.getElementById('n-file').click()">
-            <p id="file-label">📄 फाइल/फोटो अटैच करें (Optional)</p>
+            <p id="file-label" style="color: var(--brand); font-weight: 600;">📄 फाइल/फोटो अटैच करें (Optional)</p>
             <input type="file" id="n-file" hidden onchange="handleFile(this)">
-            <small style="color: #94a3b8;">Max size: 1MB (PDF या Image)</small>
+            <small style="color: var(--text-muted);">Max size: 1MB (PDF या Image)</small>
         </div>
 
         <button class="btn btn-post" id="main-btn" onclick="uploadNotice()">🚀 नोटिस पोस्ट करें</button>
@@ -53,7 +64,7 @@
     </div>
 
     <div id="notice-list">
-        <h3 style="color:#64748b; text-align:center;">लोड हो रहा है...</h3>
+        <h3 style="color:var(--brand); text-align:center;">लोड हो रहा है...</h3>
     </div>
 </div>
 
@@ -64,9 +75,8 @@
 
     let base64File = "";
     let fileName = "";
-    let editId = null; // Edit mode track karne ke liye
+    let editId = null; 
 
-    // File handling
     function handleFile(input) {
         const file = input.files[0];
         if (!file) return;
@@ -80,12 +90,11 @@
         reader.onload = function(e) {
             base64File = e.target.result;
             document.getElementById('file-label').innerText = "✅ चयनित: " + fileName;
-            document.getElementById('file-label').style.color = "#10b981";
+            document.getElementById('file-label').style.color = "#22C55E";
         };
         reader.readAsDataURL(file);
     }
 
-    // Post ya Update Notice
     function uploadNotice() {
         const msg = document.getElementById('n-msg').value.trim();
         if (!msg) return swal("Error", "कृपया नोटिस विवरण लिखें", "warning");
@@ -108,14 +117,12 @@
         });
     }
 
-    // Edit ke liye data form mein bharna
     function editNotice(id, msg, fData, fName, date, ts) {
         editId = id;
         document.getElementById('n-msg').value = msg;
         base64File = fData || "";
         fileName = fName || "";
         
-        // Hidden fields for original timing (optional, keeping original date)
         const hiddenDate = document.createElement('input');
         hiddenDate.type = 'hidden'; hiddenDate.id = 'last-date'; hiddenDate.value = date;
         const hiddenTs = document.createElement('input');
@@ -125,13 +132,13 @@
 
         document.getElementById('form-title').innerText = "📝 नोटिस एडिट करें";
         document.getElementById('main-btn').innerText = "🔄 अपडेट सुरक्षित करें";
-        document.getElementById('main-btn').style.background = "#f59e0b";
+        document.getElementById('main-btn').style.background = "#7C3AED";
         document.getElementById('edit-indicator').style.display = "block";
         document.getElementById('cancel-btn').style.display = "block";
         
         if(fName) {
             document.getElementById('file-label').innerText = "✅ मौजूदा फाइल: " + fName;
-            document.getElementById('file-label').style.color = "#10b981";
+            document.getElementById('file-label').style.color = "#22C55E";
         } else {
             document.getElementById('file-label').innerText = "📄 फाइल/फोटो अटैच करें (Optional)";
         }
@@ -139,7 +146,6 @@
         window.scrollTo(0,0);
     }
 
-    // Form reset karna
     function resetForm() {
         editId = null;
         base64File = "";
@@ -148,17 +154,16 @@
         document.getElementById('n-file').value = "";
         document.getElementById('form-title').innerText = "📢 नया नोटिस जारी करें";
         document.getElementById('main-btn').innerText = "🚀 नोटिस पोस्ट करें";
-        document.getElementById('main-btn').style.background = "#6366f1";
+        document.getElementById('main-btn').style.background = "#EC4899";
         document.getElementById('edit-indicator').style.display = "none";
         document.getElementById('cancel-btn').style.display = "none";
         document.getElementById('file-label').innerText = "📄 फाइल/फोटो अटैच करें (Optional)";
-        document.getElementById('file-label').style.color = "#64748b";
+        document.getElementById('file-label').style.color = "#7C3AED";
         
         if(document.getElementById('last-date')) document.getElementById('last-date').remove();
         if(document.getElementById('last-ts')) document.getElementById('last-ts').remove();
     }
 
-    // Delete notice
     function deleteNotice(id) {
         swal({
             title: "क्या आप पक्का हैं?",
@@ -173,10 +178,9 @@
         });
     }
 
-    // Real-time Notice Load
     db.ref('lamps/notices').on('value', snap => {
         const container = document.getElementById('notice-list');
-        container.innerHTML = "<h3>📜 पुराने नोटिस</h3>";
+        container.innerHTML = "<h3 style='color: var(--brand);'>📜 पुराने नोटिस</h3>";
         if (!snap.exists()) {
             container.innerHTML += "<p style='text-align:center; color:#94a3b8;'>कोई नोटिस नहीं मिला।</p>";
             return;
@@ -190,8 +194,6 @@
 
         notices.reverse().forEach(n => {
             let fileHTML = n.fileData ? `<a href="${n.fileData}" target="_blank" class="attach-link">📎 फाइल देखें (${n.fileName})</a>` : "";
-            
-            // Clean strings for JS arguments
             const safeMsg = n.msg.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             
             container.innerHTML += `

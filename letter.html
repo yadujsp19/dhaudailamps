@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sarkari Letter Editor - LAMPS Dhoudai</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+
+    <style>
+        :root { --primary-color: #b71c1c; --font-main: 'Tiro Devanagari Hindi', serif; }
+        * { box-sizing: border-box; }
+        body { font-family: var(--font-main); background-color: #525659; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        
+        /* A4 Page Layout */
+        .letter-container { 
+            background: white; 
+            width: 210mm; 
+            min-height: 297mm; 
+            padding: 15mm 20mm; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.5); 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+        }
+        
+        /* Header */
+        .header { text-align: center; border-bottom: 2px solid #333; margin-bottom: 15px; padding-bottom: 8px; }
+        .header h1 { margin: 0; font-size: 28px; color: var(--primary-color); font-weight: bold; font-family: 'Noto Sans Devanagari', sans-serif; }
+        .header p { margin: 5px 0; font-size: 14px; font-weight: bold; }
+
+        /* Dispatch & Date Row */
+        .meta-info { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 18px; width: 100%; border-bottom: 0px solid #eee; }
+        .meta-item { display: flex; align-items: center; gap: 5px; }
+        .input-inline { border: none; border-bottom: 1px dotted #000; outline: none; font-size: 18px; background: transparent; font-family: var(--font-main); }
+
+        /* Addressing Section */
+        .to-section { margin-bottom: 15px; line-height: 1.6; font-size: 18px; }
+        .to-lines { margin-left: 50px; display: flex; flex-direction: column; gap: 4px; }
+
+        /* Dynamic Rows (Subject/Reference) */
+        .dynamic-row { margin-bottom: 8px; display: flex; align-items: flex-start; gap: 8px; font-size: 18px; }
+        .label { font-weight: bold; white-space: nowrap; min-width: 70px; }
+        .editable-line { flex-grow: 1; border-bottom: 1px dotted #000; min-height: 1.2em; outline: none; word-wrap: break-word; font-weight: bold; }
+        
+        /* Editor Customization */
+        .ck-editor__editable { min-height: 350px !important; border: 1px solid #ddd !important; font-size: 18px !important; font-family: var(--font-main) !important; }
+
+        /* Signature */
+        .footer-sign { margin-top: auto; padding-top: 30px; display: flex; justify-content: flex-end; text-align: center; }
+        .sig-box { width: 300px; line-height: 1.4; font-size: 18px; }
+
+        /* Pratilipi */
+        .pratilipi-section { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 15px; }
+        .copy-item { display: flex; align-items: center; margin-bottom: 3px; gap: 5px; }
+        .copy-input { border: none; border-bottom: 1px solid #eee; flex-grow: 1; outline: none; font-size: 15px; font-family: var(--font-main); }
+
+        /* UI Elements */
+        .btn-tool { cursor: pointer; border: none; border-radius: 3px; font-weight: bold; color: white; padding: 4px 10px; font-size: 12px; margin-left: 5px; }
+        .btn-plus { background: #2e7d32; }
+        .btn-minus { background: #c62828; }
+        .print-fab { position: fixed; top: 20px; right: 20px; padding: 15px 30px; background: #0d47a1; color: white; border: none; border-radius: 50px; cursor: pointer; font-size: 16px; z-index: 9999; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        
+        @media print {
+            @page { size: A4; margin: 0; }
+            body { background: white; padding: 0; }
+            .print-fab, .btn-tool, #addRefBtn, .add-row-btn, .ck-toolbar { display: none !important; }
+            .letter-container { 
+                box-shadow: none !important; 
+                border: none !important; 
+                width: 210mm !important; 
+                height: 297mm !important; 
+                padding: 12mm 20mm !important; 
+                margin: 0 !important;
+            }
+            .ck.ck-editor__main>.ck-editor__editable { border: none !important; padding: 0 !important; }
+            .input-inline, .editable-line, .copy-input { border-bottom: none !important; }
+            * { color: black !important; }
+            .header h1 { color: #b71c1c !important; }
+        }
+    </style>
+</head>
+<body>
+
+<button class="print-fab" onclick="window.print()">प्रेस करें: प्रिंट / PDF सेव</button>
+
+<div class="letter-container">
+    <div class="header">
+        <h1>आदिम जाति सेवा सहकारी समिति मर्यादित धौड़ाई</h1>
+        <p>पंजीयन क्रमांक: AR/NPR/24 | स्थापना दिनांक: 10-11-2020</p>
+    </div>
+
+    <div class="meta-info">
+        <div class="meta-item">
+            <strong>क्रमांक:</strong> 
+            <input type="text" class="input-inline" style="width: 200px;" placeholder="जावक क्र. / धौड़ाई / 2026">
+        </div>
+        <div class="meta-item">
+            <strong>दिनांक:</strong> 
+            <input type="text" class="input-inline" style="width: 130px;" id="currentDate">
+        </div>
+    </div>
+
+    <div class="to-section">
+        <p><strong>प्रति,</strong></p>
+        <div class="to-lines">
+            <input type="text" class="input-inline" placeholder="1. पदनाम (जैसे: श्रीमान कलेक्टर महोदय)">
+            <input type="text" class="input-inline" placeholder="2. विभाग (जैसे: खाद्य शाखा)">
+            <input type="text" class="input-inline" placeholder="3. स्थान (जैसे: जिला नारायणपुर, छत्तीसगढ़)">
+        </div>
+    </div>
+
+    <div class="dynamic-row">
+        <span class="label">विषय:-</span>
+        <div class="editable-line" contenteditable="true">विषय का विवरण यहाँ लिखें (लंबा होने पर स्वतः नीचे आ जायेगा)...</div>
+    </div>
+
+    <div class="dynamic-row" id="refRow">
+        <span class="label">संदर्भ:-</span>
+        <div class="editable-line" contenteditable="true" style="font-weight: normal;">संदर्भ पत्र क्रमांक एवं दिनांक यहाँ लिखें...</div>
+        <button class="btn-tool btn-minus" onclick="toggleSection('refRow', false)">-</button>
+    </div>
+    <button id="addRefBtn" class="btn-tool btn-plus" style="display:none; margin-bottom:10px;" onclick="toggleSection('refRow', true)">+ संदर्भ जोड़ें</button>
+
+    <p style="margin: 10px 0; font-size: 18px;"><strong>महोदय जी,</strong></p>
+
+    <div id="editor">
+        <p>उपरोक्त विषयांतर्गत लेख है कि...</p>
+    </div>
+
+    <div class="footer-sign">
+        <div class="sig-box">
+            <p><strong>समिति प्रबंधक</strong></p>
+            <p>आ.जा.से.स.स. मर्या. धौड़ाई</p>
+            <p>जिला - नारायणपुर (छ.ग.)</p>
+        </div>
+    </div>
+
+    <div class="pratilipi-section">
+        <p style="margin: 0 0 5px 0;"><strong>प्रतिलिपि:-</strong></p>
+        <div id="copyContainer"></div>
+        <button class="btn-tool btn-plus add-row-btn" onclick="addPratilipi()">+ नई प्रतिलिपि</button>
+    </div>
+</div>
+
+<script>
+    // Initialize CKEditor with Devanagari Font support
+    let letterEditor;
+    ClassicEditor
+        .create(document.querySelector('#editor'), {
+            toolbar: ['heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', '|', 'insertTable', 'tableColumn', 'tableRow', 'mergeTableCells', '|', 'undo', 'redo']
+        })
+        .then(editor => { letterEditor = editor; });
+
+    // Official Copy-to List
+    const defaultCopies = [
+        "श्रीमान कलेक्टर महोदय जिला नारायणपुर को आवश्यक कार्यवाही सादर सूचनार्थ।",
+        "श्रीमान खाद्य अधिकारी खाद्य शाखा जिला नारायणपुर की ओर सादर सूचनार्थ।",
+        "श्रीमान सहायक पंजीयक सहकारी समितियां जिला नारायणपुर की ओर सादर सूचनार्थ।",
+        "श्रीमान नोडल अधिकारी जिला सहकारी केंद्रीय बैंक मर्यादित, जगदलपुर जिला नारायणपुर की ओर सादर सूचनार्थ।",
+        "श्रीमान शाखा प्रबंधक जिला सहकारी केंद्रीय बैंक मर्यादित, जगदलपुर शाखा - छोटे डोंगर की ओर सादर सूचनार्थ।"
+    ];
+
+    function addPratilipi(text = "") {
+        const container = document.getElementById('copyContainer');
+        const div = document.createElement('div');
+        div.className = 'copy-item';
+        div.innerHTML = `
+            <span class="row-num"></span>
+            <input type="text" class="copy-input" value="${text}">
+            <button class="btn-tool btn-minus" onclick="this.parentElement.remove(); updateNumbers();"> - </button>
+        `;
+        container.appendChild(div);
+        updateNumbers();
+    }
+
+    function updateNumbers() {
+        document.querySelectorAll('.row-num').forEach((span, i) => { span.innerText = (i + 1) + ". "; });
+    }
+
+    function toggleSection(id, show) {
+        document.getElementById(id).style.display = show ? "flex" : "none";
+        document.getElementById('addRefBtn').style.display = show ? "none" : "inline-block";
+    }
+
+    // Auto-set Date
+    document.getElementById('currentDate').value = new Date().toLocaleDateString('hi-IN');
+    
+    // Load default Pratilipi
+    defaultCopies.forEach(t => addPratilipi(t));
+</script>
+
+</body>
+</html>

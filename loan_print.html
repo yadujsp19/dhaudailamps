@@ -25,7 +25,6 @@
         table.records-table th { background: #f8fafc; color: #64748b; font-size: 12px; }
         .report-actions { display: none; gap: 10px; justify-content: center; margin: 20px 0; }
 
-        /* A4 Report Design */
         #printable-content {
             width: 210mm; min-height: 297mm; padding: 15mm; margin: 30px auto;
             background: white; border: 1px solid #d1d5db; display: none; color: black;
@@ -69,9 +68,9 @@
             <div class="table-container">
                 <table class="records-table">
                     <thead>
-                        <tr><th>SNo</th><th>खाता नंबर</th><th>किसान का नाम</th><th>पिता का नाम</th><th>ग्राम</th><th>लोन स्टेटस</th><th>एक्शन</th></tr>
+                        <tr><th>SNo</th><th>खाता नंबर</th><th>किसान का नाम</th><th>ग्राम</th><th>लोन स्टेटस</th><th>एक्शन</th></tr>
                     </thead>
-                    <tbody id="listBody"><tr><td colspan="7">डेटा लोड हो रहा है...</td></tr></tbody>
+                    <tbody id="listBody"><tr><td colspan="6">डेटा लोड हो रहा है...</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -159,7 +158,7 @@
         tbody.innerHTML = "";
         let sno = 1;
 
-        if(!farmers) return tbody.innerHTML = "<tr><td colspan='7'>डेटा नहीं मिला।</td></tr>";
+        if(!farmers) return tbody.innerHTML = "<tr><td colspan='6'>डेटा नहीं मिला।</td></tr>";
 
         Object.keys(farmers).forEach(acc => {
             const f = farmers[acc];
@@ -167,7 +166,7 @@
             const loanKey = hasLoan ? Object.keys(loans[acc]).pop() : null;
 
             tbody.innerHTML += `<tr>
-                <td>${sno++}</td><td><b>${acc}</b></td><td>${f.name}</td><td>${f.fname || '-'}</td><td>${f.vill || '-'}</td>
+                <td>${sno++}</td><td><b>${acc}</b></td><td>${f.name}</td><td>${f.vill || '-'}</td>
                 <td><span style="color:${hasLoan?'#10b981':'#ef4444'}; font-weight:bold;">${hasLoan?'ऋण पूर्ण':'लंबित'}</span></td>
                 <td>${hasLoan ? `<button class="btn btn-main" onclick="renderReport('${acc}', '${loanKey}')">📄 रिपोर्ट देखें</button>` : '-'}</td>
             </tr>`;
@@ -180,10 +179,28 @@
         const lSnap = await db.ref('lamps/loans/' + acc + '/' + loanId).once('value');
 
         if(fSnap.exists() && lSnap.exists()) {
-            const f = fSnap.val(); const l = lSnap.val();
+            const f = fSnap.val(); 
+            const l = lSnap.val();
             
             document.getElementById('out_acc_top').innerText = acc;
-            document.getElementById('out_date').innerText = l.date || "---";
+            
+            // --- UPDATED DATE LOGIC ---
+            // If l.date doesn't work, we try l.reg_date or l.d_date
+            let rawDate = l.date || l.reg_date || l.d_date || "";
+            
+            if(rawDate) {
+                // If format is YYYY-MM-DD, convert to DD/MM/YYYY
+                if(rawDate.includes("-")) {
+                    const parts = rawDate.split("-");
+                    document.getElementById('out_date').innerText = parts[2] + "/" + parts[1] + "/" + parts[0];
+                } else {
+                    document.getElementById('out_date').innerText = rawDate;
+                }
+            } else {
+                // Fallback to today's date if database date is missing
+                document.getElementById('out_date').innerText = new Date().toLocaleDateString('en-GB');
+            }
+
             document.getElementById('out_name').innerText = f.name;
             document.getElementById('out_fname').innerText = f.fname || '-';
             document.getElementById('out_vill').innerText = f.vill || '-';
@@ -191,7 +208,6 @@
             document.getElementById('out_cat').innerText = f.cat || '-';
             document.getElementById('out_crop').innerText = (l.crop || 'धान') + " (" + (l.season || '-') + ")";
             
-            // Logic for Summary Table
             const cash = parseFloat(l.cash_amt) || 0;
             const kind = parseFloat(l.kind_amt) || 0;
             const share = parseFloat(l.share_amt) || 0;
@@ -205,7 +221,6 @@
             document.getElementById('out_kind').innerText = kind.toFixed(2);
             document.getElementById('out_total').innerText = (cash + kind).toFixed(2);
 
-            // Item Table Rendering
             const itemsTable = document.getElementById('out_items_body');
             itemsTable.innerHTML = "";
             const itemsList = l.items ? (Array.isArray(l.items) ? l.items : Object.values(l.items)) : [];
@@ -217,7 +232,7 @@
             document.getElementById('action-bar').style.display = "flex";
             document.getElementById('downloadBtn').onclick = () => downloadPDF(acc);
             swal.close();
-            window.scrollTo(0, document.body.scrollHeight);
+            window.scrollTo({ top: document.getElementById('printable-content').offsetTop, behavior: 'smooth' });
         }
     }
 
@@ -231,7 +246,7 @@
     function closeReport() {
         document.getElementById('printable-content').style.display = "none";
         document.getElementById('action-bar').style.display = "none";
-        window.scrollTo(0, 0);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function downloadPDF(acc) {

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBT Quiz Generator with Side Bar</title>
+    <style>
+        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --dark: #343a40; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 15px; }
+        .admin-panel { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 12px; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; }
+        .add-btn { background: var(--primary); }
+        .gen-btn { background: var(--dark); }
+        #output-code { width: 100%; height: 150px; margin-top: 10px; font-family: monospace; }
+        .q-preview { background: #fffbe6; padding: 15px; margin-top: 20px; border: 1px dashed #ffd666; }
+    </style>
+</head>
+<body>
+
+<div class="admin-panel">
+    <h2>🎯 CBT Quiz Generator (Side Bar Mode)</h2>
+    
+    <div class="form-group">
+        <label>Sawal (Question):</label>
+        <textarea id="q-text" rows="3" placeholder="Apna sawal yahan likhein..."></textarea>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <input type="text" id="opt-a" placeholder="Option A">
+        <input type="text" id="opt-b" placeholder="Option B">
+        <input type="text" id="opt-c" placeholder="Option C">
+        <input type="text" id="opt-d" placeholder="Option D">
+    </div>
+
+    <div class="form-group" style="margin-top:10px;">
+        <label>Correct Answer & Explanation:</label>
+        <select id="correct-opt">
+            <option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option>
+        </select>
+        <textarea id="q-exp" style="margin-top:10px;" placeholder="Explanation likhein (Optional)"></textarea>
+    </div>
+
+    <div class="btn-group">
+        <button class="add-btn" onclick="addQuestion()">+ Add Question</button>
+        <button class="gen-btn" onclick="generateCode()">Generate Blogger Code</button>
+    </div>
+
+    <p id="q-status">Questions Added: 0</p>
+
+    <div class="q-preview" id="result-box" style="display:none;">
+        <label>Niche diye gaye code ko copy karke Blogger <b>HTML View</b> mein dalein:</label>
+        <textarea id="output-code" readonly onclick="this.select()"></textarea>
+    </div>
+</div>
+
+<script>
+    let questionsBank = [];
+
+    function addQuestion() {
+        const q = document.getElementById('q-text').value;
+        const a = document.getElementById('opt-a').value;
+        const b = document.getElementById('opt-b').value;
+        const c = document.getElementById('opt-c').value;
+        const d = document.getElementById('opt-d').value;
+        const ans = document.getElementById('correct-opt').value;
+        const exp = document.getElementById('q-exp').value;
+
+        if(!q || !a || !b) return alert("Pehle sawal aur options bhariye!");
+
+        questionsBank.push({ q, a, b, c, d, ans, exp });
+        document.getElementById('q-text').value = ''; 
+        document.getElementById('q-exp').value = '';
+        document.getElementById('q-status').innerText = `Questions Added: ${questionsBank.length}`;
+    }
+
+    function generateCode() {
+        if(questionsBank.length === 0) return alert("Kam se kam 1 sawal add karein!");
+        
+        const jsonQuestions = JSON.stringify(questionsBank);
+        const finalHTML = `
+<div id="quiz-container" style="max-width:900px; margin:20px auto; display:flex; flex-wrap:wrap; border:1px solid #ccc; background:#fff; font-family:sans-serif;">
+    
+    <div id="left-side" style="flex:1; min-width:300px; padding:20px; border-right:1px solid #eee;">
+        <div id="exam-header" style="border-bottom:2px solid #333; padding-bottom:10px; margin-bottom:20px; font-weight:bold; color:#d9534f;">Section: General Awareness</div>
+        <div id="q-display"></div>
+        <div style="margin-top:30px; display:flex; gap:10px;">
+            <button onclick="prevQ()" style="padding:10px 15px; cursor:pointer;">Previous</button>
+            <button onclick="nextQ()" id="main-btn" style="padding:10px 20px; background:#28a745; color:#fff; border:none; cursor:pointer; font-weight:bold;">Save & Next</button>
+        </div>
+    </div>
+
+    <div id="right-side" style="width:250px; background:#f9f9f9; padding:15px; text-align:center;">
+        <h4 style="margin-top:0;">Question Palette</h4>
+        <div id="palette-grid" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;"></div>
+        <hr style="margin:20px 0;">
+        <div style="text-align:left; font-size:12px;">
+            <p><span style="background:#28a745; padding:2px 8px; color:#fff;">#</span> Answered</p>
+            <p><span style="background:#eee; padding:2px 8px; border:1px solid #ccc;">#</span> Not Visited</p>
+        </div>
+        <button onclick="finishExam()" style="width:100%; margin-top:20px; padding:10px; background:#d9534f; color:#fff; border:none; cursor:pointer;">Submit Exam</button>
+    </div>
+</div>
+
+<script>
+(function(){
+    const data = ${jsonQuestions};
+    let cur = 0;
+    let userAnswers = new Array(data.length).fill(null);
+
+    window.renderExam = function() {
+        const q = data[cur];
+        let h = '<p style="font-weight:bold; font-size:18px;">Question ' + (cur+1) + '</p>';
+        h += '<p style="font-size:16px; margin-bottom:20px;">' + q.q + '</p>';
+        ['a','b','c','d'].forEach(l => {
+            if(q[l]) {
+                let sel = userAnswers[cur] === l ? 'checked' : '';
+                h += '<label style="display:block; padding:12px; border:1px solid #eee; margin-bottom:8px; border-radius:5px; cursor:pointer; background:#fff;">' +
+                     '<input type="radio" name="opt" value="'+l+'" '+sel+' onchange="saveAns(this.value)"> ' + q[l] + '</label>';
+            }
+        });
+        document.getElementById('q-display').innerHTML = h;
+        renderPalette();
+        document.getElementById('main-btn').innerText = cur === data.length - 1 ? "Finish Exam" : "Save & Next";
+    };
+
+    window.saveAns = function(v) { userAnswers[cur] = v; renderPalette(); };
+
+    window.renderPalette = function() {
+        let p = '';
+        data.forEach((_, i) => {
+            let bg = userAnswers[i] ? '#28a745' : '#eee';
+            let co = userAnswers[i] ? '#fff' : '#333';
+            let border = (i === cur) ? '2px solid #000' : '1px solid #ccc';
+            p += '<button onclick="goToQ('+i+')" style="padding:8px; cursor:pointer; background:'+bg+'; color:'+co+'; border:'+border+'; border-radius:4px;">'+(i+1)+'</button>';
+        });
+        document.getElementById('palette-grid').innerHTML = p;
+    };
+
+    window.goToQ = function(i) { cur = i; renderExam(); };
+    window.nextQ = function() { if(cur < data.length - 1) { cur++; renderExam(); } else { finishExam(); } };
+    window.prevQ = function() { if(cur > 0) { cur--; renderExam(); } };
+
+    window.finishExam = function() {
+        let score = 0;
+        let report = '<div id="printArea"><h2>Final Report Card</h2><hr>';
+        data.forEach((q, i) => {
+            let isCorrect = userAnswers[i] === q.ans;
+            if(isCorrect) score++;
+            report += '<div style="margin-bottom:20px; border-bottom:1px solid #eee; padding:10px;">' +
+                      '<p><b>Q'+(i+1)+':</b> '+q.q+'</p>' +
+                      '<p style="color:'+(isCorrect?'green':'red')+'">Your Ans: '+(userAnswers[i]||'Skipped')+' | Correct: '+q.ans+'</p>' +
+                      '<div style="background:#f4f4f4; padding:10px; margin-top:5px;"><b>Explanation:</b> '+(q.exp || 'N/A')+'</div></div>';
+        });
+        report += '</div><button onclick="window.print()" style="width:100%; padding:15px; background:#007bff; color:#fff; border:none; font-weight:bold; cursor:pointer;">Download PDF / Print Result</button>';
+        document.getElementById('quiz-container').innerHTML = '<div style="padding:30px; width:100%;">' + report + '</div>';
+    };
+
+    renderExam();
+})();
+<\/script>
+`;
+
+        document.getElementById('output-code').value = finalHTML;
+        document.getElementById('result-box').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
