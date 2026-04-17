@@ -16,7 +16,7 @@
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', 'Noto Sans Devanagari', sans-serif; background: #f1f5f9; padding: 20px; color: var(--text); }
         .no-print-zone { max-width: 1100px; margin: auto; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border); }
         .search-area { display: flex; gap: 10px; margin-bottom: 25px; justify-content: center; }
         .search-area input { padding: 12px 20px; width: 350px; border: 2px solid var(--border); border-radius: 10px; outline: none; font-size: 16px; }
         .table-container { width: 100%; overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
@@ -150,95 +150,120 @@
     window.onload = fetchMainData;
 
     async function fetchMainData() {
-        const farmerSnap = await db.ref('lamps/farmers').once('value');
-        const loanSnap = await db.ref('lamps/loans').once('value');
-        const farmers = farmerSnap.val();
-        const loans = loanSnap.val() || {};
-        const tbody = document.getElementById('listBody');
-        tbody.innerHTML = "";
-        let sno = 1;
+        try {
+            const farmerSnap = await db.ref('lamps/farmers').once('value');
+            const loanSnap = await db.ref('lamps/loans').once('value');
+            const farmers = farmerSnap.val();
+            const loans = loanSnap.val() || {};
+            const tbody = document.getElementById('listBody');
+            tbody.innerHTML = "";
+            let sno = 1;
 
-        if(!farmers) return tbody.innerHTML = "<tr><td colspan='6'>डेटा नहीं मिला।</td></tr>";
+            if(!farmers) return tbody.innerHTML = "<tr><td colspan='6'>डेटा नहीं मिला।</td></tr>";
 
-        Object.keys(farmers).forEach(acc => {
-            const f = farmers[acc];
-            const hasLoan = loans[acc] ? true : false;
-            const loanKey = hasLoan ? Object.keys(loans[acc]).pop() : null;
+            Object.keys(farmers).forEach(acc => {
+                const f = farmers[acc];
+                const hasLoanData = loans[acc];
+                const hasLoan = !!hasLoanData;
+                
+                let loanKey = null;
+                if(hasLoan) {
+                    const keys = Object.keys(hasLoanData);
+                    loanKey = keys[keys.length - 1]; // सबसे अंतिम लोन एंट्री उठाएगा
+                }
 
-            tbody.innerHTML += `<tr>
-                <td>${sno++}</td><td><b>${acc}</b></td><td>${f.name}</td><td>${f.vill || '-'}</td>
-                <td><span style="color:${hasLoan?'#10b981':'#ef4444'}; font-weight:bold;">${hasLoan?'ऋण पूर्ण':'लंबित'}</span></td>
-                <td>${hasLoan ? `<button class="btn btn-main" onclick="renderReport('${acc}', '${loanKey}')">📄 रिपोर्ट देखें</button>` : '-'}</td>
-            </tr>`;
-        });
+                tbody.innerHTML += `<tr>
+                    <td>${sno++}</td><td><b>${acc}</b></td><td>${f.name}</td><td>${f.vill || '-'}</td>
+                    <td><span style="color:${hasLoan?'#10b981':'#ef4444'}; font-weight:bold;">${hasLoan?'ऋण पूर्ण':'लंबित'}</span></td>
+                    <td>${hasLoan ? `<button class="btn btn-main" onclick="renderReport('${acc}', '${loanKey}')">📄 रिपोर्ट देखें</button>` : '-'}</td>
+                </tr>`;
+            });
+        } catch(e) { console.error(e); }
     }
 
     async function renderReport(acc, loanId) {
-        swal({ title: "रिपोर्ट तैयार हो रही है...", icon: "info", buttons: false });
-        const fSnap = await db.ref('lamps/farmers/' + acc).once('value');
-        const lSnap = await db.ref('lamps/loans/' + acc + '/' + loanId).once('value');
+        swal({ title: "रिपोर्ट लोड हो रही है...", icon: "info", buttons: false });
+        
+        try {
+            // किसानों और लोन का डेटा फेच करें
+            const fSnap = await db.ref(`lamps/farmers/${acc}`).once('value');
+            const lSnap = await db.ref(`lamps/loans/${acc}/${loanId}`).once('value');
 
-        if(fSnap.exists() && lSnap.exists()) {
-            const f = fSnap.val(); 
-            const l = lSnap.val();
-            
-            document.getElementById('out_acc_top').innerText = acc;
-            
-            // --- UPDATED DATE LOGIC ---
-            // If l.date doesn't work, we try l.reg_date or l.d_date
-            let rawDate = l.date || l.reg_date || l.d_date || "";
-            
-            if(rawDate) {
-                // If format is YYYY-MM-DD, convert to DD/MM/YYYY
-                if(rawDate.includes("-")) {
-                    const parts = rawDate.split("-");
-                    document.getElementById('out_date').innerText = parts[2] + "/" + parts[1] + "/" + parts[0];
-                } else {
-                    document.getElementById('out_date').innerText = rawDate;
-                }
-            } else {
-                // Fallback to today's date if database date is missing
-                document.getElementById('out_date').innerText = new Date().toLocaleDateString('en-GB');
+            if(!fSnap.exists() || !lSnap.exists()) {
+                swal("त्रुटि", "डेटाबेस में जानकारी नहीं मिली।", "error");
+                return;
             }
 
-            document.getElementById('out_name').innerText = f.name;
+            const f = fSnap.val(); 
+            const l = lSnap.val();
+
+            // 1. किसान की व्यक्तिगत जानकारी भरें
+            document.getElementById('out_acc_top').innerText = acc;
+            document.getElementById('out_name').innerText = f.name || '-';
             document.getElementById('out_fname').innerText = f.fname || '-';
             document.getElementById('out_vill').innerText = f.vill || '-';
             document.getElementById('out_land').innerText = f.land_total || '0.00';
             document.getElementById('out_cat').innerText = f.cat || '-';
             document.getElementById('out_crop').innerText = (l.crop || 'धान') + " (" + (l.season || '-') + ")";
             
-            const cash = parseFloat(l.cash_amt) || 0;
-            const kind = parseFloat(l.kind_amt) || 0;
-            const share = parseFloat(l.share_amt) || 0;
-            const ins = parseFloat(l.ins_amt) || 0;
-            const net = parseFloat(l.net_amt) || (cash - share - ins);
+            // तारीख सुधारें
+            let rDate = l.date || "";
+            document.getElementById('out_date').innerText = rDate.includes("-") ? rDate.split("-").reverse().join("/") : (rDate || new Date().toLocaleDateString('en-GB'));
 
-            document.getElementById('out_cash').innerText = cash.toFixed(2);
-            document.getElementById('out_share').innerText = share.toFixed(2);
-            document.getElementById('out_ins').innerText = ins.toFixed(2);
-            document.getElementById('out_net').innerText = net.toFixed(2);
-            document.getElementById('out_kind').innerText = kind.toFixed(2);
-            document.getElementById('out_total').innerText = (cash + kind).toFixed(2);
-
+            // 2. खाद एवं बीज (Items) की सूची भरें
             const itemsTable = document.getElementById('out_items_body');
             itemsTable.innerHTML = "";
-            const itemsList = l.items ? (Array.isArray(l.items) ? l.items : Object.values(l.items)) : [];
-            itemsList.forEach((item, i) => {
-                itemsTable.innerHTML += `<tr><td>${i+1}</td><td>${item.desc || '-'}</td><td>${item.qty}</td><td>${item.rate}</td><td>${item.total}</td></tr>`;
-            });
+            let itemsArray = l.items ? (Array.isArray(l.items) ? l.items : Object.values(l.items)) : [];
 
+            if(itemsArray.length > 0) {
+                itemsArray.forEach((item, index) => {
+                    if(item) {
+                        itemsTable.innerHTML += `<tr>
+                            <td>${index + 1}</td>
+                            <td>${item.desc || '-'}</td>
+                            <td>${item.qty || 0}</td>
+                            <td>${item.rate || 0}</td>
+                            <td>${item.total || 0}</td>
+                        </tr>`;
+                    }
+                });
+            } else {
+                itemsTable.innerHTML = "<tr><td colspan='5'>कोई खाद/बीज सामग्री विवरण नहीं मिला।</td></tr>";
+            }
+
+            // 3. ऋण सारांश (Loan Amounts) भरें
+            const cAmt = parseFloat(l.cash_amt) || 0;
+            const kAmt = parseFloat(l.kind_amt) || 0;
+            const sAmt = parseFloat(l.share_amt) || 0;
+            const iAmt = parseFloat(l.ins_amt) || 0;
+            const nAmt = parseFloat(l.net_amt) || (cAmt - sAmt - iAmt);
+            const tAmt = parseFloat(l.total_amt) || (cAmt + kAmt);
+
+            document.getElementById('out_cash').innerText = cAmt.toFixed(2);
+            document.getElementById('out_share').innerText = sAmt.toFixed(2);
+            document.getElementById('out_ins').innerText = iAmt.toFixed(2);
+            document.getElementById('out_net').innerText = nAmt.toFixed(2);
+            document.getElementById('out_kind').innerText = kAmt.toFixed(2);
+            document.getElementById('out_total').innerText = tAmt.toFixed(2);
+
+            // रिपोर्ट को विज़िबल करें
             document.getElementById('printable-content').style.display = "block";
             document.getElementById('action-bar').style.display = "flex";
             document.getElementById('downloadBtn').onclick = () => downloadPDF(acc);
+            
             swal.close();
             window.scrollTo({ top: document.getElementById('printable-content').offsetTop, behavior: 'smooth' });
+
+        } catch (error) {
+            console.error(error);
+            swal("Error", "डेटा लोड करने में तकनीकी समस्या आई।", "error");
         }
     }
 
     function filterTable() {
         const input = document.getElementById('search_input').value.toUpperCase();
-        document.querySelectorAll('#listBody tr').forEach(row => {
+        const rows = document.querySelectorAll('#listBody tr');
+        rows.forEach(row => {
             row.style.display = row.innerText.toUpperCase().includes(input) ? "" : "none";
         });
     }

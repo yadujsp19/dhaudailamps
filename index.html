@@ -1,89 +1,284 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Welcome to Firebase Hosting</title>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAMPS Dhoudai | Admin Dashboard</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-auth-compat.js"></script>
 
-    <!-- update the version number as needed -->
-    <script defer src="/__/firebase/12.12.0/firebase-app-compat.js"></script>
-    <!-- include only the Firebase features as you need -->
-    <script defer src="/__/firebase/12.12.0/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-database-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-messaging-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-storage-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-analytics-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-remote-config-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-performance-compat.js"></script>
-    <!-- 
-      initialize the SDK after all desired features are loaded, set useEmulator to false
-      to avoid connecting the SDK to running emulators.
-    -->
-    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+    <style>
+        :root { 
+            --sidebar-grad: linear-gradient(180deg, #7b2cbf 0%, #d00067 100%);
+            --accent-pink: #ff0080;
+            --main-bg: #f4f7fe;
+            --text-dark: #2d3748;
+            --text-muted: #718096;
+            --white: #ffffff;
+        }
+        
+        * { box-sizing: border-box; font-family: 'Inter', 'Noto Sans Devanagari', sans-serif; }
+        body { margin: 0; background: var(--main-bg); color: var(--text-dark); height: 100vh; overflow: hidden; display: flex; }
 
-    <style media="screen">
-      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
-      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
-      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
-      #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
-      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }
-      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
-      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
-      @media (max-width: 600px) {
-        body, #message { margin-top: 0; background: white; box-shadow: none; }
-        body { border-top: 16px solid #ffa100; }
-      }
+        /* --- LOGIN SCREEN --- */
+        #login-screen {
+            position: fixed; inset: 0; 
+            background: var(--sidebar-grad);
+            display: flex; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .login-box {
+            background: rgba(255, 255, 255, 0.95); padding: 50px; border-radius: 30px; 
+            width: 420px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+        }
+        .login-box h2 { font-weight: 700; color: #4a148c; margin-bottom: 25px; }
+        .login-box input {
+            width: 100%; padding: 15px; margin: 10px 0; border: 1px solid #e2e8f0;
+            border-radius: 15px; outline: none; font-size: 16px; background: #f8fafc;
+        }
+        .login-btn {
+            width: 100%; padding: 15px; background: var(--accent-pink); color: white; border: none;
+            border-radius: 15px; cursor: pointer; font-weight: 700; font-size: 17px; margin-top: 20px;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar { 
+            width: 290px; background: var(--sidebar-grad); height: 100vh;
+            display: flex; flex-direction: column; color: white;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar-logo { padding: 35px 25px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-logo h2 { margin: 0; font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+
+        .nav-container { flex: 1; overflow-y: auto; padding: 25px 15px; }
+
+        /* Accordion Sub-menu */
+        .menu-group { margin-bottom: 10px; }
+        .menu-header {
+            padding: 14px 18px; cursor: pointer; display: flex; align-items: center;
+            justify-content: space-between; font-size: 16px; font-weight: 500;
+            color: rgba(255,255,255,0.9); border-radius: 15px; transition: 0.3s;
+        }
+        .menu-header:hover { background: rgba(255,255,255,0.1); }
+        .menu-header span { display: flex; align-items: center; gap: 15px; }
+        
+        .sub-menu { display: none; padding: 5px 0 5px 20px; }
+        .sub-menu.open { display: block; }
+
+        .nav-item {
+            padding: 12px 18px; font-size: 15px; color: rgba(255,255,255,0.7);
+            cursor: pointer; display: flex; align-items: center; border-radius: 12px; margin: 3px 0; transition: 0.2s;
+        }
+        .nav-item:hover { color: white; background: rgba(255,255,255,0.05); }
+        .nav-item.active { 
+            background: var(--accent-pink); color: white; font-weight: 600; 
+            box-shadow: 0 4px 12px rgba(213, 63, 140, 0.4);
+        }
+
+        /* Content Area */
+        .main-view { flex: 1; display: flex; flex-direction: column; }
+        .top-bar { 
+            height: 75px; background: white; display: flex; align-items: center; 
+            justify-content: space-between; padding: 0 40px; border-bottom: 1px solid #edf2f7;
+        }
+        #tab-title { font-size: 20px; font-weight: 700; color: #1a365d; }
+        
+        .user-profile { display: flex; align-items: center; gap: 15px; background: #f8fafc; padding: 8px 18px; border-radius: 50px; }
+        
+        iframe { flex: 1; border: none; background: var(--main-bg); margin: 10px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+
+        .logout-wrap { padding: 25px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .btn-logout { 
+            width: 100%; padding: 12px; background: rgba(255,255,255,0.1); color: white; 
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 15px;
+        }
+        .btn-logout:hover { background: rgba(255,255,255,0.2); }
+
+        .arrow { transition: transform 0.3s; font-size: 11px; color: rgba(255,255,255,0.5); }
+        .open-arrow { transform: rotate(180deg); color: white; }
     </style>
-  </head>
-  <body>
-    <div id="message">
-      <h2>Welcome</h2>
-      <h1>Firebase Hosting Setup Complete</h1>
-      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
-      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <div style="font-size: 50px; margin-bottom: 15px;">🏛️</div>
+            <h2>लैम्प्स धौड़ाई</h2>
+            <input type="email" id="email" placeholder="ईमेल आईडी">
+            <input type="password" id="password" placeholder="पासवर्ड">
+            <button class="login-btn" id="loginBtn" onclick="checkLogin()">प्रवेश करें</button>
+        </div>
     </div>
-    <p id="load">Firebase SDK Loading&hellip;</p>
+
+    <div id="dashboard-view" style="width: 100%; height: 100vh; display: none;">
+        <div class="sidebar">
+            <div class="sidebar-logo">
+                <h2><i class="fa-solid fa-building-columns"></i> लैम्प्स धौड़ाई</h2>
+            </div>
+
+            <div class="nav-container">
+                <div class="menu-group">
+                    <div class="menu-header" onclick="toggleMenu(this)">
+                        <span><i class="fa-solid fa-user-shield"></i> एडमिन कंट्रोल</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </div>
+                    <div class="sub-menu">
+                        <div class="nav-item active" onclick="changeTab(this, 'user_mgmt.html')">यूजर मैनेजमेंट</div>
+                        <div class="nav-item" onclick="changeTab(this, 'notice.html')">सूचना पटल</div>
+                    </div>
+                </div>
+
+                <div class="menu-group">
+                    <div class="menu-header" onclick="toggleMenu(this)">
+                        <span><i class="fa-solid fa-users"></i> सदस्य प्रबंधन</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </div>
+                    <div class="sub-menu">
+                        <div class="nav-item" onclick="changeTab(this, 'kisan_reg.html')">किसान पंजीकरण</div>
+                    </div>
+                </div>
+
+                <div class="menu-group">
+                    <div class="menu-header" onclick="toggleMenu(this)">
+                        <span><i class="fa-solid fa-hand-holding-dollar"></i> ऋण संचालन</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </div>
+                    <div class="sub-menu">
+                        <div class="nav-item" onclick="changeTab(this, 'loan_mgmt.html')">ऋण प्रबंधन</div>
+                        <div class="nav-item" onclick="changeTab(this, 'pronote.html')">ऋण प्रोनोट (Time Pro)</div>
+                        <div class="nav-item" onclick="changeTab(this, 'loan_print.html')">ऋण प्रिंट (PDF)</div>
+                        <div class="nav-item" onclick="changeTab(this, 'loan_disbursement_report.html')">आहरण पत्रक</div>
+                        <div class="nav-item" onclick="changeTab(this, 'report.html')">रिपोर्ट्स आर्काइव</div>
+                    </div>
+                </div>
+
+                <div class="menu-group">
+                    <div class="menu-header" onclick="toggleMenu(this)">
+                        <span><i class="fa-solid fa-boxes-stacked"></i> इन्वेंटरी</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </div>
+                    <div class="sub-menu">
+                        <div class="nav-item" onclick="changeTab(this, 'fertilizer.html')">खाद एवं बीज</div>
+                    </div>
+                </div>
+
+                <div class="menu-group">
+                    <div class="menu-header" onclick="toggleMenu(this)">
+                        <span><i class="fa-solid fa-money-bill-transfer"></i> वित्तीय प्रबंधन</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </div>
+                    <div class="sub-menu">
+                        <div class="nav-item" onclick="changeTab(this, 'transactions.html')">Voucher एंट्री</div>
+                        <div class="nav-item" onclick="changeTab(this, 'transaction-report.html')">लेन-देन रिपोर्ट</div>
+                    </div>
+                </div>
+
+                <div class="menu-group">
+                    <div class="menu-header" onclick="toggleMenu(this)">
+                        <span><i class="fa-solid fa-envelope-open-text"></i> पत्राचार</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </div>
+                    <div class="sub-menu">
+                        <div class="nav-item" onclick="changeTab(this, 'letter.html')">आधिकारिक पत्र लिखें</div>
+                        <div class="nav-item" onclick="changeTab(this, 'letter_report.html')">पत्र आर्काइव / रिपोर्ट</div>
+                    </div>
+                </div>
+
+                <div class="menu-group">
+                    <div class="menu-header" onclick="toggleMenu(this)">
+                        <span><i class="fa-solid fa-ellipsis-vertical"></i> अन्य सेवाएँ</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </div>
+                    <div class="sub-menu">
+                        <div class="nav-item" onclick="changeTab(this, 'bank_list.html')">बैंक लिस्ट</div>
+                        <div class="nav-item" onclick="changeTab(this, 'upload.html')">डेटा अपलोड</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="logout-wrap">
+                <button class="btn-logout" onclick="logout()"><i class="fa-solid fa-power-off"></i> लॉगआउट</button>
+            </div>
+        </div>
+
+        <div class="main-view">
+            <div class="top-bar">
+                <div id="tab-title">यूजर मैनेजमेंट</div>
+                <div class="user-profile">
+                    <div style="text-align: right;">
+                        <div id="user-email" style="font-size: 14px; font-weight: 700; color: #4a148c;">---</div>
+                        <div id="cur-date" style="font-size: 11px; color: #718096;"></div>
+                    </div>
+                    <i class="fa-solid fa-circle-user" style="font-size: 32px; color: #d1d5db;"></i>
+                </div>
+            </div>
+            <iframe id="content-frame" src="about:blank"></iframe>
+        </div>
+    </div>
 
     <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const loadEl = document.querySelector('#load');
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        // // The Firebase SDK is initialized and available here!
-        //
-        // firebase.auth().onAuthStateChanged(user => { });
-        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
-        // firebase.firestore().doc('/foo/bar').get().then(() => { });
-        // firebase.functions().httpsCallable('yourFunction')().then(() => { });
-        // firebase.messaging().requestPermission().then(() => { });
-        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
-        // firebase.analytics(); // call to activate
-        // firebase.analytics().logEvent('tutorial_completed');
-        // firebase.performance(); // call to activate
-        //
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCp3N3FWECu-i4huDcWqn4RsQvThpbQjHo",
+            authDomain: "societydb.firebaseapp.com",
+            databaseURL: "https://societydb-default-rtdb.firebaseio.com",
+            projectId: "societydb",
+            storageBucket: "societydb.firebasestorage.app",
+            messagingSenderId: "1016342848711",
+            appId: "1:1016342848711:web:f5f804f5c89f86ab040ae2"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
 
-        try {
-          let app = firebase.app();
-          let features = [
-            'auth', 
-            'database', 
-            'firestore',
-            'functions',
-            'messaging', 
-            'storage', 
-            'analytics', 
-            'remoteConfig',
-            'performance',
-          ].filter(feature => typeof app[feature] === 'function');
-          loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`;
-        } catch (e) {
-          console.error(e);
-          loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
+        function checkLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('loginBtn');
+            if(!email || !password) return swal("Oops", "ईमेल और पासवर्ड भरें", "warning");
+
+            btn.disabled = true; btn.innerText = "जाँच हो रही है...";
+            auth.signInWithEmailAndPassword(email, password).catch(e => {
+                btn.disabled = false; btn.innerText = "प्रवेश करें";
+                swal("Login Failed", "गलत ईमेल या पासवर्ड!", "error");
+            });
         }
-      });
+
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('dashboard-view').style.display = 'flex';
+                document.getElementById('user-email').innerText = user.email;
+                toggleMenu(document.querySelector('.menu-header'));
+                changeTab(document.querySelector('.nav-item.active'), 'user_mgmt.html');
+            } else {
+                document.getElementById('login-screen').style.display = 'flex';
+                document.getElementById('dashboard-view').style.display = 'none';
+            }
+        });
+
+        function toggleMenu(header) {
+            const subMenu = header.nextElementSibling;
+            const arrow = header.querySelector('.arrow');
+            document.querySelectorAll('.sub-menu').forEach(m => {
+                if(m !== subMenu) { m.classList.remove('open'); m.previousElementSibling.querySelector('.arrow').classList.remove('open-arrow'); }
+            });
+            subMenu.classList.toggle('open');
+            arrow.classList.toggle('open-arrow');
+        }
+
+        function changeTab(el, file) {
+            document.getElementById('content-frame').src = file;
+            document.getElementById('tab-title').innerText = el.innerText;
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        function logout() { auth.signOut().then(() => location.reload()); }
+        document.getElementById('cur-date').innerText = new Date().toLocaleDateString('hi-IN', { day:'numeric', month:'long', year:'numeric' });
     </script>
-  </body>
+</body>
 </html>

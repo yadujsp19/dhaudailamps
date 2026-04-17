@@ -186,6 +186,7 @@
             <div class="field"><label>पिता का नाम</label><input type="text" id="l_fname" readonly></div>
             <div class="field"><label>ग्राम</label><input type="text" id="l_vill" readonly></div>
             <div class="field"><label>कुल भूमि (हेक्टेयर)</label><input type="text" id="l_land" readonly></div>
+            <div class="field"><label>भूमि का प्रकार</label><input type="text" id="l_land_type" readonly style="font-weight:bold; color:var(--primary);"></div>
             <div class="field"><label>समूह</label><input type="text" id="l_group" readonly style="color:var(--brand);"></div>
         </div>
 
@@ -294,6 +295,10 @@
                 document.getElementById('l_fname').value = d.fname || '-';
                 document.getElementById('l_vill').value = d.vill || '-';
                 document.getElementById('l_land').value = d.land_total || 0;
+                
+                // Fetching Land Type from Database (Matches 'land_type' key in Registration file)
+                document.getElementById('l_land_type').value = d.land_type || 'राजस्व';
+                
                 currentLand = parseFloat(d.land_total) || 0;
                 let group = (d.cat === "ST") ? (currentLand <= 2 ? "आदिवासी 1" : "आदिवासी 2") : "सामान्य";
                 document.getElementById('l_group').value = group;
@@ -411,7 +416,6 @@
             const d = snap.val();
             editModeId = key;
             
-            // Fixed Logic: Display the record's specific date in report/form
             if(d.date) {
                 document.getElementById('l_date').value = d.date;
             }
@@ -445,7 +449,6 @@
         swal("Updated", "नयी दरें सुरक्षित कर दी गयी हैं।", "success");
     }
     
-    // Auto sync on load
     fetchKisanStatus();
 </script>
 </body>

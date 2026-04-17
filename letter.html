@@ -7,161 +7,254 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
     
-    <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCp3N3FWECu-i4huDcWqn4RsQvThpbQjHo",
+            authDomain: "societydb.firebaseapp.com",
+            databaseURL: "https://societydb-default-rtdb.firebaseio.com",
+            projectId: "societydb",
+            storageBucket: "societydb.firebasestorage.app",
+            messagingSenderId: "1016342848711",
+            appId: "1:1016342848711:web:f5f804f5c89f86ab040ae2"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        async function saveLetterToFirebase() {
+            const javakNo = document.getElementById('javak_no').value;
+            if (!javakNo) {
+                alert("कृपया जावक क्रमांक भरें!");
+                return;
+            }
+
+            const btn = document.querySelector('.save-btn');
+            btn.innerText = "सेव हो रहा है...";
+            btn.disabled = true;
+
+            const pratilipiList = [];
+            document.querySelectorAll('.copy-input').forEach(input => {
+                if(input.value.trim() !== "") pratilipiList.push(input.value.trim());
+            });
+
+            try {
+                const letterData = {
+                    kramank: javakNo,
+                    date: document.getElementById('currentDate').value,
+                    to_1: document.getElementById('to_1').value,
+                    to_2: document.getElementById('to_2').value,
+                    subject: document.getElementById('subject').innerText,
+                    reference: document.getElementById('reference').innerText,
+                    content: quill.root.innerHTML,
+                    pratilipi: pratilipiList,
+                    timestamp: Date.now()
+                };
+
+                const safeKey = javakNo.replace(/\//g, "-").replace(/\./g, "-");
+                await db.ref('outward_letters/' + safeKey).set(letterData);
+                alert("डेटा सफलतापूर्वक सेव हो गया!");
+            } catch (error) {
+                alert("त्रुटि: " + error.message);
+            } finally {
+                btn.innerText = "💾 Firebase में सेव करें";
+                btn.disabled = false;
+            }
+        }
+    </script>
 
     <style>
         :root { --primary-color: #b71c1c; --font-main: 'Tiro Devanagari Hindi', serif; }
         * { box-sizing: border-box; }
-        body { font-family: var(--font-main); background-color: #525659; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         
-        /* A4 Page Layout */
+        body { 
+            font-family: var(--font-main); 
+            background-color: #525659; 
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            justify-content: center; 
+        }
+        
+        /* A4 Paper Logic */
         .letter-container { 
             background: white; 
             width: 210mm; 
             min-height: 297mm; 
             padding: 15mm 20mm; 
-            box-shadow: 0 0 15px rgba(0,0,0,0.5); 
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
         }
         
-        /* Header */
-        .header { text-align: center; border-bottom: 2px solid #333; margin-bottom: 15px; padding-bottom: 8px; }
-        .header h1 { margin: 0; font-size: 28px; color: var(--primary-color); font-weight: bold; font-family: 'Noto Sans Devanagari', sans-serif; }
-        .header p { margin: 5px 0; font-size: 14px; font-weight: bold; }
-
-        /* Dispatch & Date Row */
-        .meta-info { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 18px; width: 100%; border-bottom: 0px solid #eee; }
-        .meta-item { display: flex; align-items: center; gap: 5px; }
+        .header { text-align: center; border-bottom: 2px solid #333; margin-bottom: 10px; padding-bottom: 5px; }
+        .header h1 { margin: 0; font-size: 26px; color: var(--primary-color); font-family: 'Noto Sans Devanagari', sans-serif; }
+        .header p { margin: 3px 0; font-size: 13px; font-weight: bold; }
+        
+        .meta-info { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 18px; }
         .input-inline { border: none; border-bottom: 1px dotted #000; outline: none; font-size: 18px; background: transparent; font-family: var(--font-main); }
-
-        /* Addressing Section */
-        .to-section { margin-bottom: 15px; line-height: 1.6; font-size: 18px; }
-        .to-lines { margin-left: 50px; display: flex; flex-direction: column; gap: 4px; }
-
-        /* Dynamic Rows (Subject/Reference) */
-        .dynamic-row { margin-bottom: 8px; display: flex; align-items: flex-start; gap: 8px; font-size: 18px; }
-        .label { font-weight: bold; white-space: nowrap; min-width: 70px; }
-        .editable-line { flex-grow: 1; border-bottom: 1px dotted #000; min-height: 1.2em; outline: none; word-wrap: break-word; font-weight: bold; }
         
-        /* Editor Customization */
-        .ck-editor__editable { min-height: 350px !important; border: 1px solid #ddd !important; font-size: 18px !important; font-family: var(--font-main) !important; }
-
-        /* Signature */
-        .footer-sign { margin-top: auto; padding-top: 30px; display: flex; justify-content: flex-end; text-align: center; }
-        .sig-box { width: 300px; line-height: 1.4; font-size: 18px; }
-
-        /* Pratilipi */
-        .pratilipi-section { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 15px; }
-        .copy-item { display: flex; align-items: center; margin-bottom: 3px; gap: 5px; }
-        .copy-input { border: none; border-bottom: 1px solid #eee; flex-grow: 1; outline: none; font-size: 15px; font-family: var(--font-main); }
-
-        /* UI Elements */
-        .btn-tool { cursor: pointer; border: none; border-radius: 3px; font-weight: bold; color: white; padding: 4px 10px; font-size: 12px; margin-left: 5px; }
-        .btn-plus { background: #2e7d32; }
-        .btn-minus { background: #c62828; }
-        .print-fab { position: fixed; top: 20px; right: 20px; padding: 15px 30px; background: #0d47a1; color: white; border: none; border-radius: 50px; cursor: pointer; font-size: 16px; z-index: 9999; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .to-section { margin-bottom: 15px; font-size: 18px; }
+        .dynamic-row { margin-bottom: 8px; display: flex; gap: 5px; font-size: 18px; align-items: flex-start; }
+        .label { font-weight: bold; min-width: 65px; }
+        .editable-line { flex-grow: 1; border-bottom: 1px dotted #000; outline: none; font-weight: bold; }
         
+        #editor-container { height: auto; min-height: 300px; border: none !important; }
+        .ql-editor { line-height: 1.6; font-size: 18px; padding: 10px 0 !important; overflow-y: visible; }
+        .ql-toolbar.ql-snow { border: none !important; background: #f8f9fa; border-bottom: 1px solid #ddd !important; }
+
+        .footer-sign { margin-top: auto; padding-top: 40px; display: flex; justify-content: flex-end; text-align: center; }
+        .sig-box { width: 300px; font-size: 18px; }
+        
+        .pratilipi-section { border-top: none !important; margin-top: 30px; font-size: 16px; }
+        .copy-item { display: flex; align-items: center; margin-bottom: 5px; gap: 5px; }
+        .copy-input { border: none; border-bottom: 1px solid #eee; flex-grow: 1; outline: none; font-family: var(--font-main); font-size: 16px; }
+
+        /* Floating Controls Panel */
+        .controls { 
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+            z-index: 1000; 
+            width: 220px;
+        }
+        
+        .btn-main { padding: 12px; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold; width: 100%; text-decoration: none; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .print-btn { background: #0d47a1; }
+        .save-btn { background: #1b5e20; }
+        .report-link { background: #e65100; font-family: sans-serif; }
+        
+        .tool-box { background: white; padding: 15px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .tool-box label { font-size: 11px; font-weight: bold; color: #333; text-transform: uppercase; }
+        select { width: 100%; padding: 8px; margin: 5px 0 12px 0; border-radius: 4px; border: 1px solid #ccc; }
+
+        .btn-toggle { background: #eeeeee; border: 1px solid #ccc; padding: 2px 8px; cursor: pointer; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .btn-toggle:hover { background: #ddd; }
+
         @media print {
-            @page { size: A4; margin: 0; }
+            .controls, .ql-toolbar, .btn-toggle, button { display: none !important; }
             body { background: white; padding: 0; }
-            .print-fab, .btn-tool, #addRefBtn, .add-row-btn, .ck-toolbar { display: none !important; }
-            .letter-container { 
-                box-shadow: none !important; 
-                border: none !important; 
-                width: 210mm !important; 
-                height: 297mm !important; 
-                padding: 12mm 20mm !important; 
-                margin: 0 !important;
-            }
-            .ck.ck-editor__main>.ck-editor__editable { border: none !important; padding: 0 !important; }
-            .input-inline, .editable-line, .copy-input { border-bottom: none !important; }
-            * { color: black !important; }
-            .header h1 { color: #b71c1c !important; }
+            .letter-container { box-shadow: none; width: 100%; padding: 15mm 20mm; margin: 0; border: none; }
+            .input-inline, .editable-line { border-bottom: none; }
         }
     </style>
 </head>
 <body>
 
-<button class="print-fab" onclick="window.print()">प्रेस करें: प्रिंट / PDF सेव</button>
+<div class="controls">
+    <button class="btn-main print-btn" onclick="window.print()">🖨️ प्रिंट / PDF</button>
+    <button class="btn-main save-btn" onclick="saveLetterToFirebase()">💾 Firebase में सेव करें</button>
+    <a href="letter_report.html" class="btn-main report-link">📄 रिपोर्ट देखें</a>
+    
+    <div class="tool-box">
+        <label>Line Spacing</label>
+        <select onchange="changeSpacing(this.value)">
+            <option value="1.2">Narrow (1.2)</option>
+            <option value="1.6" selected>Normal (1.6)</option>
+            <option value="2.0">Wide (2.0)</option>
+            <option value="2.5">Extra Wide (2.5)</option>
+        </select>
+
+        <label>Font Size</label>
+        <select onchange="changeFontSize(this.value)">
+            <option value="14px">Small (14px)</option>
+            <option value="18px" selected>Normal (18px)</option>
+            <option value="22px">Large (22px)</option>
+            <option value="26px">Extra Large (26px)</option>
+        </select>
+
+        <label>Section Toggle</label>
+        <div style="display: flex; gap: 5px; margin-top: 5px;">
+            <button class="btn-toggle" onclick="toggleSection('refRow', true)">+ संदर्भ</button>
+            <button class="btn-toggle" style="color:red;" onclick="toggleSection('refRow', false)">- संदर्भ</button>
+        </div>
+    </div>
+</div>
 
 <div class="letter-container">
     <div class="header">
-        <h1>आदिम जाति सेवा सहकारी समिति मर्यादित धौड़ाई</h1>
+        <h1>आदिम जाति सेवा सहकारी समिति मर्यादित धौड़ाई</h1>
         <p>पंजीयन क्रमांक: AR/NPR/24 | स्थापना दिनांक: 10-11-2020</p>
     </div>
 
     <div class="meta-info">
-        <div class="meta-item">
-            <strong>क्रमांक:</strong> 
-            <input type="text" class="input-inline" style="width: 200px;" placeholder="जावक क्र. / धौड़ाई / 2026">
-        </div>
-        <div class="meta-item">
-            <strong>दिनांक:</strong> 
-            <input type="text" class="input-inline" style="width: 130px;" id="currentDate">
-        </div>
+        <div><strong>क्रमांक:</strong> <input type="text" id="javak_no" class="input-inline" style="width: 200px;" placeholder="जावक क्र."></div>
+        <div><strong>दिनांक:</strong> <input type="text" class="input-inline" style="width: 130px;" id="currentDate"></div>
     </div>
 
     <div class="to-section">
-        <p><strong>प्रति,</strong></p>
-        <div class="to-lines">
-            <input type="text" class="input-inline" placeholder="1. पदनाम (जैसे: श्रीमान कलेक्टर महोदय)">
-            <input type="text" class="input-inline" placeholder="2. विभाग (जैसे: खाद्य शाखा)">
-            <input type="text" class="input-inline" placeholder="3. स्थान (जैसे: जिला नारायणपुर, छत्तीसगढ़)">
+        <p style="margin: 0;"><strong>प्रति,</strong></p>
+        <div style="margin-left: 45px; display: flex; flex-direction: column;">
+            <input type="text" id="to_1" class="input-inline" placeholder="पदनाम">
+            <input type="text" id="to_2" class="input-inline" placeholder="स्थान/विभाग">
         </div>
     </div>
 
     <div class="dynamic-row">
         <span class="label">विषय:-</span>
-        <div class="editable-line" contenteditable="true">विषय का विवरण यहाँ लिखें (लंबा होने पर स्वतः नीचे आ जायेगा)...</div>
+        <div id="subject" class="editable-line" contenteditable="true">विषय यहाँ लिखें...</div>
     </div>
 
-    <div class="dynamic-row" id="refRow">
+    <div class="dynamic-row" id="refRow" style="display: none;">
         <span class="label">संदर्भ:-</span>
-        <div class="editable-line" contenteditable="true" style="font-weight: normal;">संदर्भ पत्र क्रमांक एवं दिनांक यहाँ लिखें...</div>
-        <button class="btn-tool btn-minus" onclick="toggleSection('refRow', false)">-</button>
+        <div id="reference" class="editable-line" contenteditable="true" style="font-weight: normal;">संदर्भ यहाँ लिखें...</div>
     </div>
-    <button id="addRefBtn" class="btn-tool btn-plus" style="display:none; margin-bottom:10px;" onclick="toggleSection('refRow', true)">+ संदर्भ जोड़ें</button>
 
-    <p style="margin: 10px 0; font-size: 18px;"><strong>महोदय जी,</strong></p>
+    <p style="margin: 15px 0;"><strong>महोदय जी,</strong></p>
 
-    <div id="editor">
+    <div id="editor-container">
         <p>उपरोक्त विषयांतर्गत लेख है कि...</p>
     </div>
 
     <div class="footer-sign">
         <div class="sig-box">
-            <p><strong>समिति प्रबंधक</strong></p>
-            <p>आ.जा.से.स.स. मर्या. धौड़ाई</p>
-            <p>जिला - नारायणपुर (छ.ग.)</p>
+            <p style="margin-bottom: 60px;"></p>
+            <p><strong>(समिति प्रबंधक)</strong></p>
+            <p>आ.जा.से.स.स. मर्या. धौड़ाई</p>
         </div>
     </div>
 
     <div class="pratilipi-section">
         <p style="margin: 0 0 5px 0;"><strong>प्रतिलिपि:-</strong></p>
         <div id="copyContainer"></div>
-        <button class="btn-tool btn-plus add-row-btn" onclick="addPratilipi()">+ नई प्रतिलिपि</button>
+        <button onclick="addPratilipi()" style="background:#2e7d32; color:white; border:none; padding:4px 10px; cursor:pointer; border-radius:3px; font-size:12px; margin-top:5px;">+ प्रतिलिपि जोड़ें</button>
     </div>
 </div>
 
 <script>
-    // Initialize CKEditor with Devanagari Font support
-    let letterEditor;
-    ClassicEditor
-        .create(document.querySelector('#editor'), {
-            toolbar: ['heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', '|', 'insertTable', 'tableColumn', 'tableRow', 'mergeTableCells', '|', 'undo', 'redo']
-        })
-        .then(editor => { letterEditor = editor; });
+    var quill = new Quill('#editor-container', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'align': [] }],
+                ['clean']
+            ]
+        }
+    });
 
-    // Official Copy-to List
-    const defaultCopies = [
-        "श्रीमान कलेक्टर महोदय जिला नारायणपुर को आवश्यक कार्यवाही सादर सूचनार्थ।",
-        "श्रीमान खाद्य अधिकारी खाद्य शाखा जिला नारायणपुर की ओर सादर सूचनार्थ।",
-        "श्रीमान सहायक पंजीयक सहकारी समितियां जिला नारायणपुर की ओर सादर सूचनार्थ।",
-        "श्रीमान नोडल अधिकारी जिला सहकारी केंद्रीय बैंक मर्यादित, जगदलपुर जिला नारायणपुर की ओर सादर सूचनार्थ।",
-        "श्रीमान शाखा प्रबंधक जिला सहकारी केंद्रीय बैंक मर्यादित, जगदलपुर शाखा - छोटे डोंगर की ओर सादर सूचनार्थ।"
-    ];
+    function changeSpacing(val) {
+        const editor = document.querySelector('.ql-editor');
+        if(editor) editor.style.lineHeight = val;
+    }
+
+    function changeFontSize(val) {
+        const editor = document.querySelector('.ql-editor');
+        if(editor) editor.style.fontSize = val;
+    }
+
+    function toggleSection(id, show) {
+        document.getElementById(id).style.display = show ? "flex" : "none";
+    }
 
     function addPratilipi(text = "") {
         const container = document.getElementById('copyContainer');
@@ -170,7 +263,7 @@
         div.innerHTML = `
             <span class="row-num"></span>
             <input type="text" class="copy-input" value="${text}">
-            <button class="btn-tool btn-minus" onclick="this.parentElement.remove(); updateNumbers();"> - </button>
+            <button onclick="this.parentElement.remove(); updateNumbers();" style="background:#c62828; color:white; border:none; cursor:pointer; padding:2px 5px; border-radius:3px; margin-left:5px;">✕</button>
         `;
         container.appendChild(div);
         updateNumbers();
@@ -180,16 +273,9 @@
         document.querySelectorAll('.row-num').forEach((span, i) => { span.innerText = (i + 1) + ". "; });
     }
 
-    function toggleSection(id, show) {
-        document.getElementById(id).style.display = show ? "flex" : "none";
-        document.getElementById('addRefBtn').style.display = show ? "none" : "inline-block";
-    }
-
-    // Auto-set Date
     document.getElementById('currentDate').value = new Date().toLocaleDateString('hi-IN');
-    
-    // Load default Pratilipi
-    defaultCopies.forEach(t => addPratilipi(t));
+    const defaults = ["श्रीमान कलेक्टर महोदय जिला नारायणपुर की ओर सादर सूचनार्थ।", "श्रीमान खाद्य अधिकारी जिला नारायणपुर की ओर सादर सूचनार्थ।"];
+    defaults.forEach(t => addPratilipi(t));
 </script>
 
 </body>

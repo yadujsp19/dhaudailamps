@@ -108,7 +108,7 @@
                     <th width="11%">Debit<br>(+)</th>
                     <th width="11%">Credit<br>(-)</th>
                     <th width="11%">Balance</th>
-                    <th width="4%">Action</th>
+                    <th width="4%" class="no-print">Action</th>
                 </tr>
             </thead>
             <tbody id="table-body"></tbody>
@@ -134,20 +134,25 @@
 
         swal({ title: "डेटा जनरेट हो रहा है...", icon: "info", buttons: false });
 
-        const snap = await db.ref('lamps/vouchers').once('value');
-        if(!snap.exists()) {
+        try {
+            const snap = await db.ref('lamps/vouchers').once('value');
+            if(!snap.exists()) {
+                swal.close();
+                return swal("No Data", "वाउचर रिकॉर्ड नहीं मिला", "info");
+            }
+
+            const allVouchers = [];
+            snap.forEach(child => {
+                allVouchers.push({ key: child.key, ...child.val() });
+            });
+            // Date wise sorting
+            allVouchers.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+            renderDoubleEntryTable(allVouchers, from, to, type, openingBal);
             swal.close();
-            return swal("No Data", "वाउचर रिकॉर्ड नहीं मिला", "info");
+        } catch (e) {
+            swal("Error", "डेटा फेच करने में समस्या: " + e.message, "error");
         }
-
-        const allVouchers = [];
-        snap.forEach(child => {
-            allVouchers.push({ key: child.key, ...child.val() });
-        });
-        allVouchers.sort((a,b) => new Date(a.date) - new Date(b.date));
-
-        renderDoubleEntryTable(allVouchers, from, to, type, openingBal);
-        swal.close();
     }
 
     function renderDoubleEntryTable(data, from, to, type, openingBal) {
@@ -172,74 +177,74 @@
                 <td class="text-left">OPENING BALANCE</td>
                 <td></td><td></td><td></td>
                 <td class="amt-text">${openingBal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td></td>
+                <td class="no-print"></td>
             </tr>`;
 
         data.forEach((v, index) => {
+            // Filter by Date
             if(v.date >= from && v.date <= to) {
+                // Filter by Voucher Type
                 if (type !== "DAYBOOK" && type !== "CASHBOOK" && v.type !== type) return;
                 
-                v.entries.forEach(e => {
-                    let showRow = true;
-                    if (type === "CASHBOOK") {
-                        if (e.dr !== "नगद खाता" && e.cr !== "नगद खाता") showRow = false;
-                    }
+                if (v.entries && Array.isArray(v.entries)) {
+                    v.entries.forEach(e => {
+                        let showRow = true;
+                        // Special filter for Cash Book
+                        if (type === "CASHBOOK") {
+                            if (e.dr !== "नगद खाता" && e.cr !== "नगद खाता") showRow = false;
+                        }
 
-                    if(showRow) {
-                        // Balance Logic (Asset specific: Cash)
-                        if(e.dr === "नगद खाता") currentBal += e.amt;
-                        if(e.cr === "नगद खाता") currentBal -= e.amt;
-                        
-                        // Accumulate only visible transaction amounts for totals
-                        totalDr += e.amt;
-                        totalCr += e.amt;
+                        if(showRow) {
+                            // Balance Logic (Specifically tracking "नगद खाता" for Cash Book/General flow)
+                            if(e.dr === "नगद खाता") currentBal += e.amt;
+                            if(e.cr === "नगद खाता") currentBal -= e.amt;
+                            
+                            totalDr += e.amt;
+                            totalCr += e.amt;
 
-                        body.innerHTML += `
-                            <tr>
-                                <td rowspan="2" class="no-bottom-border" style="vertical-align:top; padding-top:10px;">${v.date}</td>
-                                <td rowspan="2" class="no-bottom-border" style="vertical-align:top; padding-top:10px;">${v.vNo || (index + 1)}</td>
-                                <td class="text-left dr-text no-bottom-border">${e.dr}</td>
-                                <td rowspan="2" class="no-bottom-border" style="vertical-align:top; padding-top:10px;">${v.type}</td>
-                                <td class="amt-text no-bottom-border">${e.amt.toFixed(2)}</td>
-                                <td class="no-bottom-border"></td>
-                                <td rowspan="2" class="no-bottom-border amt-text" style="vertical-align:top; padding-top:10px;">${currentBal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                                <td rowspan="2" class="no-bottom-border no-print" style="vertical-align:top; padding-top:10px;">
-                                    <button class="action-btn edit-btn" title="Edit" onclick="editVoucher('${v.key}')">✏️</button>
-                                    <button class="action-btn del-btn" title="Delete" onclick="deleteVoucher('${v.key}')">🗑️</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="text-left cr-text no-top-border">To ${e.cr}
-                                    ${v.mainDesc ? `<span class="narration">(${v.mainDesc})</span>` : ''}
-                                </td>
-                                <td class="no-top-border"></td>
-                                <td class="amt-text no-top-border">${e.amt.toFixed(2)}</td>
-                            </tr>`;
-                    }
-                });
+                            body.innerHTML += `
+                                <tr>
+                                    <td rowspan="2" class="no-bottom-border" style="vertical-align:top; padding-top:10px;">${v.date}</td>
+                                    <td rowspan="2" class="no-bottom-border" style="vertical-align:top; padding-top:10px;">${v.vNo || (index + 1)}</td>
+                                    <td class="text-left dr-text no-bottom-border">${e.dr}</td>
+                                    <td rowspan="2" class="no-bottom-border" style="vertical-align:top; padding-top:10px;">${v.type}</td>
+                                    <td class="amt-text no-bottom-border">${e.amt.toFixed(2)}</td>
+                                    <td class="no-bottom-border"></td>
+                                    <td rowspan="2" class="no-bottom-border amt-text" style="vertical-align:top; padding-top:10px;">${currentBal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                                    <td rowspan="2" class="no-bottom-border no-print" style="vertical-align:top; padding-top:10px;">
+                                        <button class="action-btn edit-btn" title="Edit" onclick="editVoucher('${v.key}')">✏️</button>
+                                        <button class="action-btn del-btn" title="Delete" onclick="deleteVoucher('${v.key}')">🗑️</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-left cr-text no-top-border">To ${e.cr}
+                                        ${v.mainDesc ? `<span class="narration">(${v.mainDesc})</span>` : ''}
+                                    </td>
+                                    <td class="no-top-border"></td>
+                                    <td class="amt-text no-top-border">${e.amt.toFixed(2)}</td>
+                                </tr>`;
+                        }
+                    });
+                }
             }
         });
 
-        // Calculations for TFoot
-        const grandTotalDr = openingBal + totalDr;
-        const grandTotalCr = totalCr + currentBal;
-
         foot.innerHTML = `
             <tr class="total-row">
-                <td colspan="4" style="text-align: right; padding-right: 15px;">GRAND TOTAL</td>
+                <td colspan="4" style="text-align: right; padding-right: 15px;">TOTAL TRANSACTIONS</td>
                 <td class="amt-text">${totalDr.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                 <td class="amt-text">${totalCr.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td colspan="2"></td>
+                <td colspan="2" class="no-print"></td>
             </tr>
             <tr class="closing-row">
                 <td colspan="6" style="text-align: right; padding-right: 15px;">CLOSING BALANCE (अंतिम शेष)</td>
                 <td class="amt-text">${currentBal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td></td>
+                <td class="no-print"></td>
             </tr>`;
     }
 
     function editVoucher(key) {
-        swal("Edit", "Voucher ID: " + key, "info");
+        swal("Edit Notice", "Voucher ID: " + key + "\nकृपया transaction.html पर जाकर एडिट करें।", "info");
     }
 
     function deleteVoucher(key) {

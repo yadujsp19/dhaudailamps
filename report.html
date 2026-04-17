@@ -31,12 +31,10 @@
         @media print {
             @page { size: landscape; margin: 5mm; }
             html, body { background: white !important; padding: 0 !important; margin: 0 !important; }
+            . Ritz-table { width: 100% !important; }
             .no-print { display: none !important; }
             #modal-overlay { position: static; display: block !important; background: white !important; padding: 0 !important; overflow: visible !important; }
             .modal-content { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
-            #printable-area { width: 100% !important; }
-            .ritz-table { width: 100% !important; border: 1.2pt solid black !important; }
-            .ritz-table th, .ritz-table td { font-size: 11px !important; padding: 1px !important; }
         }
     </style>
 </head>
@@ -81,7 +79,8 @@
 
     function renderGroupTable(name, reports, container) {
         let rows = "";
-        const currentStatus = reports[0].group_status || "समिति में लंबित";
+        const currentStatus = reports[0].group_status || "समिति में प्रक्रियाधीन";
+        
         reports.reverse().forEach((r, i) => {
             rows += `<tr><td>${i+1}</td><td>${r.gen_date}</td><td>${r.group_name}</td><td>${r.crop_name}</td><td>${r.items.length}</td>
             <td><button class="btn btn-edit" onclick="editReport('${r.id}')">📝 Edit & View</button>
@@ -95,8 +94,8 @@
                     <div>
                         <label style="font-weight:bold; font-size:13px; color:#64748b;">बैच स्थिति: </label>
                         <select class="status-select" onchange="updateGroupStatus('${name}', this.value)">
-                            <option value="समिति में लंबित" ${currentStatus==='समिति में लंबित'?'selected':''}>⏳ समिति में लंबित</option>
-                            <option value="बैंक में लंबित" ${currentStatus==='बैंक में लंबित'?'selected':''}>🏦 बैंक में लंबित</option>
+                            <option value="समिति में प्रक्रियाधीन" ${currentStatus==='समिति में प्रक्रियाधीन'?'selected':''}>⏳ समिति में प्रक्रियाधीन</option>
+                            <option value="बैंक में प्रक्रियाधीन" ${currentStatus==='बैंक में प्रक्रियाधीन'?'selected':''}>🏦 बैंक में प्रक्रियाधीन</option>
                             <option value="ऋण वितरण पूर्ण" ${currentStatus==='ऋण वितरण पूर्ण'?'selected':''}>✅ ऋण वितरण पूर्ण</option>
                         </select>
                     </div>
@@ -107,20 +106,27 @@
     }
 
     async function updateGroupStatus(reportName, newStatus) {
-        swal({ title: "स्टेटस अपडेट", text: `क्या आप '${reportName}' के सभी किसानों का स्टेटस '${newStatus}' में बदलना चाहते हैं?`, icon: "warning", buttons: ["निरस्त", "हाँ, बदलें"] })
+        swal({ 
+            title: "स्टेटस अपडेट", 
+            text: `क्या आप '${reportName}' के सभी किसानों का स्टेटस बदलकर '${newStatus}' करना चाहते हैं?`, 
+            icon: "warning", 
+            buttons: ["निरस्त", "हाँ, बदलें"] 
+        })
         .then(async (willUpdate) => {
             if (willUpdate) {
                 const updates = {};
                 Object.keys(allReports).forEach(key => {
                     if (allReports[key].report_name === reportName) {
                         updates[`lamps/generated_reports/${key}/group_status`] = newStatus;
-                        allReports[key].items.forEach(item => {
-                            updates[`lamps/loans/${item.acc}/status`] = newStatus;
-                        });
+                        if (allReports[key].items) {
+                            allReports[key].items.forEach(item => {
+                                updates[`lamps/loans/${item.acc}/status`] = newStatus;
+                            });
+                        }
                     }
                 });
                 await db.ref().update(updates);
-                swal("सफल", "बैच का स्टेटस अपडेट कर दिया गया है", "success");
+                swal("सफल", "बैच और किसानों का स्टेटस अपडेट कर दिया गया है", "success");
             }
         });
     }
@@ -203,7 +209,15 @@
 
     function viewGroupSummary(reportGroupName) {
         const accounts = { "आदिवासी 01": "105004642778", "आदिवासी 02": "105004642789", "सामान्य 01": "105004642734", "सामान्य 02": "105004642745" };
-        const summary = { "आदिवासी 01": {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0}, "आदिवासी 02": {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0}, "सामान्य 01": {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0}, "सामान्य 02": {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0} };
+        
+        // स्ट्रक्चर में Normal और Van Patta डेटा अलग रखने के लिए ऑब्जेक्ट
+        const summary = { 
+            "आदिवासी 01": { n: {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0}, v: {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0} },
+            "आदिवासी 02": { n: {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0}, v: {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0} },
+            "सामान्य 01": { n: {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0}, v: {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0} },
+            "सामान्य 02": { n: {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0}, v: {c:0, r:0, lc:0, lk:0, nc:0, nv:0, s:0} }
+        };
+
         const cropsList = ["धान", "मक्का", "कोदो-कुटकी", "तिलहन", "अन्य फसल"];
         const cropSum = {};
         cropsList.forEach(c => cropSum[c] = {c:0, r:0, nc:0, nv:0});
@@ -215,13 +229,24 @@
             const cat = r.group_name; 
             const cName = r.crop_name || "अन्य फसल";
             r.items.forEach(i => {
-                const l = parseFloat(i.land) || 0; const c = parseFloat(i.cash) || 0; const k = parseFloat(i.kind) || 0; const s = parseFloat(i.share) || 0;
+                const l = parseFloat(i.land) || 0; 
+                const c = parseFloat(i.cash) || 0; 
+                const k = parseFloat(i.kind) || 0; 
+                const s = parseFloat(i.share) || 0;
+                let slc = Math.round(l*25200), slk = Math.round(l*16800);
+
                 if(summary[cat]) { 
-                    summary[cat].c++; 
-                    summary[cat].r += l; 
-                    let slc = Math.round(l*25200), slk = Math.round(l*16800);
-                    summary[cat].lc += slc; summary[cat].lk += slk; 
-                    summary[cat].nc += c; summary[cat].nv += k; summary[cat].s += s;
+                    // चेक करें कि जमीन का प्रकार 'Van Patta' है या नहीं
+                    let sub = (i.land_type === "Van Patta" || i.land_type === "वन पट्टा") ? 'v' : 'n';
+                    
+                    summary[cat][sub].c++; 
+                    summary[cat][sub].r += l; 
+                    summary[cat][sub].lc += slc; 
+                    summary[cat][sub].lk += slk; 
+                    summary[cat][sub].nc += c; 
+                    summary[cat][sub].nv += k; 
+                    summary[cat][sub].s += s;
+
                     summary_gt_lc += slc; summary_gt_lk += slk;
                 }
                 let targetCrop = cropsList.includes(cName) ? cName : "अन्य फसल";
@@ -229,25 +254,40 @@
             });
         });
 
-        // Save data to database for Master Editor
-        const summaryDataToSave = {
-            total_loan: (gt.nc + gt.nv).toFixed(2),
-            total_limit: (summary_gt_lc + summary_gt_lk).toFixed(2),
-            adivasi1_loan: summary["आदिवासी 01"] ? (summary["आदिवासी 01"].nc + summary["आदिवासी 01"].nv).toFixed(2) : "0.00",
-            adivasi2_loan: summary["आदिवासी 02"] ? (summary["आदिवासी 02"].nc + summary["आदिवासी 02"].nv).toFixed(2) : "0.00",
-            samanya1_loan: summary["सामान्य 01"] ? (summary["सामान्य 01"].nc + summary["सामान्य 01"].nv).toFixed(2) : "0.00",
-            samanya2_loan: summary["सामान्य 02"] ? (summary["सामान्य 02"].nc + summary["सामान्य 02"].nv).toFixed(2) : "0.00",
-            save_date: today
-        };
-        db.ref(`lamps/goshwara_summary/${reportGroupName}`).set(summaryDataToSave);
-
         let mainRows = ""; let sno = 1;
         Object.keys(summary).forEach(k => {
-            const d = summary[k]; if(d.c === 0) return;
-            const drawT = d.nc + d.nv; gt.c += d.c; gt.r += d.r; gt.nc += d.nc; gt.nv += d.nv; gt.s += d.s;
-            mainRows += `<tr><td rowspan="3">${sno.toString().padStart(2,'0')}</td><td style="text-align:left; padding-left:10px;">${k}</td><td>${d.c}</td><td>${d.r.toFixed(2)}</td><td>${d.lc}</td><td>${d.lk}</td><td>${d.lc+d.lk}</td><td>${d.nc}</td><td>${d.nv}</td><td>${drawT}</td><td>${d.s}</td><td>${d.nc-d.s}</td><td rowspan="3">${accounts[k]}</td></tr>
-            <tr style="font-size:9px;"><td>वन - अधिकार</td><td>0</td><td>0.00</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
-            <tr style="font-weight:bold; background:#f2f2f2;"><td>योग</td><td>${d.c}</td><td>${d.r.toFixed(2)}</td><td>${d.lc}</td><td>${d.lk}</td><td>${d.lc+d.lk}</td><td>${d.nc}</td><td>${d.nv}</td><td>${drawT}</td><td>${d.s}</td><td>${d.nc-d.s}</td></tr>`;
+            const norm = summary[k].n;
+            const van = summary[k].v;
+            
+            // यदि इस ग्रुप में कोई किसान नहीं है तो छोड़ दें
+            if(norm.c === 0 && van.c === 0) return;
+
+            const totalC = norm.c + van.c;
+            const totalR = norm.r + van.r;
+            const totalLC = norm.lc + van.lc;
+            const totalLK = norm.lk + van.lk;
+            const totalNC = norm.nc + van.nc;
+            const totalNV = norm.nv + van.nv;
+            const totalS = norm.s + van.s;
+            const drawT = totalNC + totalNV;
+
+            gt.c += totalC; gt.r += totalR; gt.nc += totalNC; gt.nv += totalNV; gt.s += totalS;
+
+            mainRows += `
+            <tr>
+                <td rowspan="3">${sno.toString().padStart(2,'0')}</td>
+                <td style="text-align:left; padding-left:10px;">${k}</td>
+                <td>${norm.c}</td><td>${norm.r.toFixed(2)}</td><td>${norm.lc}</td><td>${norm.lk}</td><td>${norm.lc+norm.lk}</td><td>${norm.nc}</td><td>${norm.nv}</td><td>${norm.nc+norm.nv}</td><td>${norm.s}</td><td>${norm.nc-norm.s}</td>
+                <td rowspan="3">${accounts[k]}</td>
+            </tr>
+            <tr style="font-size:11px; color: #555;">
+                <td style="text-align:left; padding-left:10px;">वन - अधिकार</td>
+                <td>${van.c}</td><td>${van.r.toFixed(2)}</td><td>${van.lc}</td><td>${van.lk}</td><td>${van.lc+van.lk}</td><td>${van.nc}</td><td>${van.nv}</td><td>${van.nc+van.nv}</td><td>${van.s}</td><td>${van.nc-van.s}</td>
+            </tr>
+            <tr style="font-weight:bold; background:#f2f2f2;">
+                <td>योग</td>
+                <td>${totalC}</td><td>${totalR.toFixed(2)}</td><td>${totalLC}</td><td>${totalLK}</td><td>${totalLC+totalLK}</td><td>${totalNC}</td><td>${totalNV}</td><td>${drawT}</td><td>${totalS}</td><td>${totalNC-totalS}</td>
+            </tr>`;
             sno++;
         });
 
@@ -307,7 +347,7 @@
             document.getElementById('h-y').innerText = document.getElementById('sel-y').value;
             document.getElementById('h-c').innerText = document.getElementById('sel-c').value;
         };
-        document.querySelectorAll('select').forEach(s => s.onchange = sync);
+        document.querySelectorAll('.header-selects select').forEach(s => s.onchange = sync);
         document.getElementById('modal-overlay').style.display = "block";
     }
 

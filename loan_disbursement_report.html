@@ -13,9 +13,9 @@
         select, input, button { padding: 10px; border: 1px solid #ddd; border-radius: 8px; outline: none; }
         .btn-fetch { background: var(--primary); color: white; cursor: pointer; font-weight: bold; border: none; }
         .table-container { background: white; border-radius: 12px; overflow-x: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1200px; }
-        th { background: #f8fafc; padding: 12px; border-bottom: 2px solid #e2e8f0; text-align: center; }
-        td { padding: 12px; border-bottom: 1px solid #f1f5f9; text-align: center; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1500px; }
+        th { background: #f8fafc; padding: 12px; border-bottom: 2px solid #e2e8f0; text-align: center; white-space: nowrap; }
+        td { padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: center; }
         
         #save-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
         .modal-box { background: white; padding: 25px; border-radius: 15px; width: 400px; box-shadow: 0 20px 25px rgba(0,0,0,0.1); }
@@ -29,6 +29,7 @@
     <div class="filter-card">
         <div><label>फसल चुनें:</label><br>
             <select id="f-crop">
+                <option value="all">सभी फसल</option>
                 <option value="धान">धान</option>
                 <option value="मक्का">मक्का</option>
                 <option value="गेहूं">गेहूं</option>
@@ -42,6 +43,7 @@
                 <option value="आदिवासी 02">आदिवासी 02 (> 2हे.)</option>
                 <option value="सामान्य 01">सामान्य 01 (<= 2हे.)</option>
                 <option value="सामान्य 02">सामान्य 02 (> 2हे.)</option>
+                <option value="वन अधिकार">वन अधिकार (वन पट्टा)</option>
             </select>
         </div>
         <button class="btn-fetch" onclick="loadDisbursementData()">🔍 डेटा लोड करें</button>
@@ -51,11 +53,24 @@
         <table>
             <thead>
                 <tr>
-                    <th>चुनें</th><th>दिनांक</th><th>खाता नंबर</th><th>नाम</th><th>ग्राम</th><th>रकबा</th><th>नगद</th><th>वस्तु</th><th>कुल ऋण</th><th>कैटेगरी</th>
+                    <th>चुनें</th>
+                    <th>दिनांक</th>
+                    <th>खाता नंबर</th>
+                    <th>नाम</th>
+                    <th>ग्राम</th>
+                    <th>भूमि प्रकार</th>
+                    <th>रकबा</th>
+                    <th>नगद</th>
+                    <th>वस्तु</th>
+                    <th>कुल ऋण</th>
+                    <th>DMR नगद खाता</th>
+                    <th>DMR वस्तु खाता</th>
+                    <th>कैटेगरी</th>
+                    <th>फसल</th>
                 </tr>
             </thead>
             <tbody id="data-body">
-                <tr><td colspan="10" style="padding:40px; color:gray;">कृपया फिल्टर चुनकर 'डेटा लोड करें' बटन दबाएं।</td></tr>
+                <tr><td colspan="14" style="padding:40px; color:gray;">कृपया फिल्टर चुनकर 'डेटा लोड करें' बटन दबाएं।</td></tr>
             </tbody>
         </table>
     </div>
@@ -82,24 +97,24 @@
     let tempReportData = [];
 
     async function loadDisbursementData() {
-        const crop = document.getElementById('f-crop').value;
+        const cropFilter = document.getElementById('f-crop').value;
         const groupFilter = document.getElementById('f-group').value;
         const tbody = document.getElementById('data-body');
-        tbody.innerHTML = "<tr><td colspan='10'>डेटा प्रोसेस हो रहा है... कृपया प्रतीक्षा करें।</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='14'>डेटा प्रोसेस हो रहा है... कृपया प्रतीक्षा करें।</td></tr>";
 
         try {
-            // Fetch Loans, Farmers, and Already Generated Reports
             const loanSnap = await db.ref('lamps/loans').once('value');
             const farmerSnap = await db.ref('lamps/farmers').once('value');
             const reportSnap = await db.ref('lamps/generated_reports').once('value');
+            const accInfoSnap = await db.ref('accountinfo').once('value');
             
-            if(!loanSnap.exists()) return tbody.innerHTML = "<tr><td colspan='10'>लोन का कोई डेटा नहीं मिला।</td></tr>";
+            if(!loanSnap.exists()) return tbody.innerHTML = "<tr><td colspan='14'>लोन का कोई डेटा नहीं मिला।</td></tr>";
             
             const loansObj = loanSnap.val();
             const farmersObj = farmerSnap.val() || {};
             const reportsObj = reportSnap.val() || {};
+            const accountInfoObj = accInfoSnap.val() || {};
 
-            // Collect all account numbers already saved in reports
             let processedAccs = new Set();
             Object.values(reportsObj).forEach(report => {
                 if(report.items) {
@@ -109,48 +124,67 @@
 
             let allRows = [];
             for (let acc in loansObj) {
-                // SKIP IF ALREADY IN REPORT.HTML ARCHIVE
                 if (processedAccs.has(acc)) continue;
 
                 const keys = Object.keys(loansObj[acc]);
                 const lastKey = keys[keys.length - 1];
                 const loan = loansObj[acc][lastKey];
 
-                if (loan.crop !== crop) continue;
+                if (cropFilter !== "all" && loan.crop !== cropFilter) continue;
 
                 const f = farmersObj[acc] || {};
+                const accInfo = accountInfoObj[acc] || {};
                 const land = parseFloat(f.land_total) || 0;
-                let group = (f.cat === "ST") ? (land <= 2 ? "आदिवासी 01" : "आदिवासी 02") : (land <= 2 ? "सामान्य 01" : "सामान्य 02");
+
+                // Category & Van Patta Logic
+                let group = "";
+                if(f.land_type === "Van Patta" || f.land_type === "वन पट्टा") {
+                    group = "वन अधिकार";
+                } else {
+                    group = (f.cat === "ST") ? (land <= 2 ? "आदिवासी 01" : "आदिवासी 02") : (land <= 2 ? "सामान्य 01" : "सामान्य 02");
+                }
 
                 if (groupFilter !== "all" && groupFilter !== group) continue;
 
-                allRows.push({ ...loan, ...f, acc, group, ts: new Date(loan.date).getTime() || 0 });
+                allRows.push({ 
+                    ...loan, 
+                    ...f, 
+                    acc, 
+                    group, 
+                    dmr_nagad: accInfo.dmr_nagad || "-", 
+                    dmr_vastu: accInfo.dmr_vastu || "-",
+                    ts: new Date(loan.date).getTime() || 0 
+                });
             }
 
             allRows.sort((a, b) => a.ts - b.ts);
             tbody.innerHTML = "";
+            
             if(allRows.length === 0) {
-                tbody.innerHTML = "<tr><td colspan='10'>सभी किसानों की रिपोर्ट बन चुकी है या कोई रिकॉर्ड नहीं मिला।</td></tr>";
+                tbody.innerHTML = "<tr><td colspan='14'>कोई नया रिकॉर्ड नहीं मिला।</td></tr>";
                 return;
             }
 
             allRows.forEach((d, index) => {
-                const totalLoan = parseFloat(d.cash_amt || 0) + parseFloat(d.kind_amt || 0);
+                const totalLoan = (parseFloat(d.cash_amt) || 0) + (parseFloat(d.kind_amt) || 0);
                 tbody.innerHTML += `<tr>
                     <td><input type="checkbox" class="row-check" data-idx="${index}"></td>
                     <td>${d.date || '-'}</td>
                     <td><b>${d.acc}</b></td>
                     <td>${d.name}</td>
                     <td>${d.vill || '-'}</td>
+                    <td>${d.land_type || '-'}</td>
                     <td>${d.land_total || 0}</td>
                     <td>${d.cash_amt || 0}</td>
                     <td>${d.kind_amt || 0}</td>
                     <td><b>${totalLoan}</b></td>
+                    <td style="color:blue;">${d.dmr_nagad}</td>
+                    <td style="color:green;">${d.dmr_vastu}</td>
                     <td><span style="font-size:11px; font-weight:bold; color:var(--accent);">${d.group}</span></td>
+                    <td>${d.crop}</td>
                 </tr>`;
             });
 
-            // Extra Logic: Select and Show Modal on Check
             setTimeout(() => {
                 document.querySelectorAll('.row-check').forEach(cb => {
                     cb.onchange = () => {
@@ -167,7 +201,7 @@
             tempReportData = allRows;
 
         } catch (error) {
-            tbody.innerHTML = "<tr><td colspan='10'>Error: " + error.message + "</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='14'>त्रुटि: " + error.message + "</td></tr>";
         }
     }
 
@@ -191,10 +225,21 @@
                 const shareVal = Math.round(cashVal * 0.10);
 
                 selectedItems.push({
-                    acc: item.acc, name: item.name, fname: item.fname || "-",
-                    vill: item.vill || "-", land: item.land_total || 0,
-                    cash: cashVal, kind: kindVal, total: cashVal + kindVal,
-                    share: shareVal, net: cashVal - shareVal, caste: item.cat || "-"
+                    acc: item.acc, 
+                    name: item.name, 
+                    fname: item.fname || "-",
+                    vill: item.vill || "-", 
+                    land: item.land_total || 0,
+                    land_type: item.land_type || "Normal",
+                    cash: cashVal, 
+                    kind: kindVal, 
+                    total: cashVal + kindVal,
+                    share: shareVal, 
+                    net: cashVal - shareVal, 
+                    caste: item.cat || "-",
+                    crop: item.crop,
+                    dmr_nagad: item.dmr_nagad,
+                    dmr_vastu: item.dmr_vastu
                 });
             }
         });
@@ -202,18 +247,22 @@
         if(selectedItems.length === 0) return swal("Error", "कोई किसान नहीं चुना गया!", "error");
 
         const timestamp = Date.now();
-        await db.ref('lamps/generated_reports/' + timestamp).set({
-            report_name: reportName,
-            group_name: document.getElementById('m-group').value,
-            gen_date: new Date().toLocaleDateString('hi-IN'),
-            crop_name: document.getElementById('m-crop').value,
-            items: selectedItems,
-            timestamp: timestamp
-        });
+        try {
+            await db.ref('lamps/generated_reports/' + timestamp).set({
+                report_name: reportName,
+                group_name: document.getElementById('m-group').value,
+                gen_date: new Date().toLocaleDateString('hi-IN'),
+                crop_name: document.getElementById('m-crop').value,
+                items: selectedItems,
+                timestamp: timestamp
+            });
 
-        swal("सफलता", "रिपोर्ट सुरक्षित कर दी गई है! अब यह किसान लिस्ट से हट जाएगा।", "success");
-        closeModal();
-        loadDisbursementData(); 
+            swal("सफलता", "रिपोर्ट सुरक्षित कर दी गई है!", "success");
+            closeModal();
+            loadDisbursementData(); 
+        } catch (e) {
+            swal("त्रुटि", "डेटा सेव नहीं हो सका: " + e.message, "error");
+        }
     }
 </script>
 </body>

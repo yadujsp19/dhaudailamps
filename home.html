@@ -3,63 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kisan Portal | LAMPS</title>
+    <title>Kisan Portal | LAMPS Dhaurai</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
 
     <style>
-        :root { --primary: #0f172a; --accent: #6366f1; --danger: #ef4444; --success: #10b981; }
-        body { font-family: 'Noto Sans Devanagari', sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
-
-        .main-container { 
-            display: flex; 
-            gap: 25px; 
-            max-width: 1200px; 
-            margin: 30px auto; 
-            flex-wrap: wrap; 
+        :root { 
+            --brand: #6366f1; --brand-hover: #4f46e5; --brand-light: #eef2ff;
+            --primary: #0f172a; --secondary: #64748b; --bg: #f1f5f9; 
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
         }
+        body { font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', sans-serif; background: var(--bg); padding: 20px; margin: 0; }
 
-        /* Left Side: Status Check */
-        .status-section { flex: 1.2; min-width: 350px; }
-        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
-        h2 { text-align: center; color: var(--primary); margin-bottom: 25px; font-size: 22px; position: relative; }
-        h2::after { content: ''; display: block; width: 50px; height: 4px; background: var(--accent); margin: 8px auto; border-radius: 2px; }
+        .main-container { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 25px; max-width: 1300px; margin: auto; }
+
+        /* Section 1: Search */
+        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        .header-title { text-align: center; color: var(--primary); margin-bottom: 25px; border-bottom: 4px solid var(--brand); display: inline-block; width: 100%; padding-bottom: 10px; font-weight: 700; }
         
-        input { width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; text-align: center; font-size: 16px; outline: none; transition: 0.3s; box-sizing: border-box; }
-        input:focus { border-color: var(--accent); background: #f5f7ff; }
-        .btn-check { width: 100%; padding: 15px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; margin-top: 20px; cursor: pointer; transition: 0.3s; }
-        .btn-check:hover { background: #4f46e5; transform: translateY(-2px); }
+        input { width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; text-align: center; font-size: 16px; outline: none; box-sizing: border-box; }
+        .btn-check { width: 100%; padding: 15px; background: var(--brand); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; margin-top: 15px; cursor: pointer; transition: 0.3s; }
+        .btn-check:hover { background: var(--brand-hover); }
 
-        /* Right Side: Notice Board */
-        .notice-section { flex: 0.8; min-width: 320px; }
-        .notice-card { background: #1e293b; color: white; padding: 20px; border-radius: 20px; height: 450px; display: flex; flex-direction: column; border-left: 6px solid var(--danger); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .notice-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #334155; padding-bottom: 10px; }
-        .blink-dot { height: 12px; width: 12px; background-color: var(--danger); border-radius: 50%; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
+        #result-area { display: none; margin-top: 25px; border-top: 2px dashed #e2e8f0; padding-top: 20px; }
+        .res-table { width: 100%; border-collapse: collapse; }
+        .res-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 15px; }
+        .label { color: var(--secondary); font-weight: 600; }
+        .value { color: var(--primary); font-weight: 700; text-align: right; }
+        .status-banner { text-align: center; margin-top: 15px; font-weight: 800; font-size: 18px; padding: 15px; border-radius: 12px; }
 
-        /* Custom Hidden Scrollbar */
-        .notice-box { flex: 1; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
-        .notice-box::-webkit-scrollbar { display: none; }
-        
-        .notice-item { background: #334155; padding: 15px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid var(--accent); transition: 0.3s; }
-        .notice-item:hover { background: #3f4e66; }
-        .n-date { font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
-        .n-text { font-size: 15px; margin-top: 6px; line-height: 1.5; color: #f1f5f9; }
+        /* Right Column */
+        .right-column { display: flex; flex-direction: column; gap: 25px; }
 
-        /* Result Table Design */
-        #result-area { display: none; margin-top: 25px; animation: fadeIn 0.5s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .res-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #f8fafc; border-radius: 10px; overflow: hidden; }
-        .res-table td { padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
-        .label { color: #64748b; font-weight: bold; width: 40%; }
-        .value { color: #0f172a; font-weight: bold; text-align: right; }
-        .status-banner { text-align: center; margin-top: 15px; font-weight: 800; font-size: 18px; padding: 15px; border-radius: 12px; letter-spacing: 1px; }
+        /* Section 2: Notice Board */
+        .notice-card { background: #1e293b; color: white; padding: 20px; border-radius: 20px; border-left: 6px solid var(--danger); min-height: 250px; display: flex; flex-direction: column; }
+        .notice-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .blink { height: 10px; width: 10px; background: red; border-radius: 50%; animation: blink-anim 1s infinite; }
+        @keyframes blink-anim { 50% { opacity: 0; } }
+        .notice-box { flex: 1; overflow-y: auto; scrollbar-width: none; }
+        .notice-item { background: #334155; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid var(--brand); }
 
-        footer { text-align: center; margin-top: 40px; }
-        .admin-link { color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: bold; transition: 0.3s; }
-        .admin-link:hover { color: var(--accent); }
+        /* Section 3: Stock Board */
+        .stock-card { background: white; padding: 20px; border-radius: 20px; border: 1px solid #e2e8f0; border-top: 6px solid var(--success); }
+        .stock-table { width: 100%; border-collapse: collapse; }
+        .stock-table th { text-align: left; color: var(--secondary); font-size: 12px; padding: 10px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; }
+        .stock-table td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; font-weight: 700; font-size: 14px; }
+        .qty-badge { background: var(--brand-light); color: var(--brand); padding: 4px 10px; border-radius: 6px; font-weight: 700; }
+
+        @media (max-width: 900px) { .main-container { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -68,112 +61,159 @@
     
     <div class="status-section">
         <div class="card">
-            <h2>ऋण की स्थिति जांचें</h2>
+            <h2 class="header-title">🚜 ऋण की स्थिति देखें</h2>
             <input type="text" id="acc_input" placeholder="बैंक खाता नंबर दर्ज करें...">
-            <button class="btn-check" onclick="checkStatus()">खोजें (Search)</button>
+            <button class="btn-check" onclick="checkStatus()">ऋण की स्थिति देखें</button>
 
             <div id="result-area">
                 <table class="res-table">
                     <tr><td class="label">किसान का नाम</td><td class="value" id="res-name">-</td></tr>
-                    <tr><td class="label">पिता/पति का नाम</td><td class="value" id="res-fname">-</td></tr>
-                    <tr><td class="label">जाति (Caste)</td><td class="value" id="res-caste">-</td></tr>
-                    <tr><td class="label">ग्राम (Village)</td><td class="value" id="res-vill">-</td></tr>
+                    <tr><td class="label">पिता का नाम</td><td class="value" id="res-fname">-</td></tr>
+                    <tr><td class="label">ग्राम</td><td class="value" id="res-vill">-</td></tr>
+                    <tr><td class="label">जाति</td><td class="value" id="res-caste">-</td></tr>
+                    <tr><td class="label">कैटेगरी</td><td class="value" id="res-cat">-</td></tr>
+                    <tr><td class="label" style="color:var(--brand)">बैच की वर्तमान स्थिति</td><td class="value" id="res-batch-status" style="color:var(--brand)">-</td></tr>
                 </table>
                 <div id="res-status-box" class="status-banner"></div>
             </div>
         </div>
     </div>
 
-    <div class="notice-section">
+    <div class="right-column">
+        
         <div class="notice-card">
             <div class="notice-header">
-                <div class="blink-dot"></div>
-                <span style="font-weight:bold; letter-spacing:1px; color: #f1f5f9;">लाइव सूचना पटल</span>
+                <div class="blink"></div>
+                <span style="font-weight:700; letter-spacing:1px;">लाइव सूचना पटल</span>
             </div>
-            
             <div class="notice-box" id="notice-display">
-                <p style="text-align:center; color:#94a3b8; margin-top:50px;">सूचनाएं लोड हो रही हैं...</p>
+                <p style="text-align:center; color:var(--secondary);">लोड हो रहा है...</p>
             </div>
         </div>
+
+        <div class="stock-card">
+            <h3 style="margin:0 0 15px 0; color:var(--primary); font-size:18px;">📦 खाद एवं बीज स्टॉक स्थिति</h3>
+            <table class="stock-table">
+                <thead>
+                    <tr><th>सामग्री</th><th style="text-align:right;">उपलब्ध स्टॉक</th></tr>
+                </thead>
+                <tbody id="stock-display">
+                    <tr><td colspan="2" style="text-align:center; color:var(--secondary);">स्टॉक लोड हो रहा है...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
     </div>
-
 </div>
-
-<footer>
-    <a href="#" class="admin-link">🔐 कर्मचारी लॉगिन</a>
-</footer>
 
 <script>
     const firebaseConfig = { databaseURL: "https://societydb-default-rtdb.firebaseio.com/" };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 1. LIVE NOTICE FETCH (No Scrollbar Style)
+    // 1. LIVE NOTICES
     db.ref('lamps/notices').on('value', snap => {
         const container = document.getElementById('notice-display');
         container.innerHTML = "";
-        
         if(!snap.exists()) {
-            container.innerHTML = "<p style='text-align:center; color:#94a3b8;'>अभी कोई नई सूचना नहीं है।</p>";
+            container.innerHTML = "<p style='text-align:center; color:var(--secondary);'>कोई नई सूचना नहीं है।</p>";
             return;
         }
-
-        let notices = [];
-        snap.forEach(child => { notices.push(child.val()); });
-        
-        notices.reverse().forEach(n => {
-            container.innerHTML += `
-                <div class="notice-item">
-                    <div class="n-date">📅 ${n.date}</div>
-                    <div class="n-text">${n.msg}</div>
-                </div>`;
+        let logs = [];
+        snap.forEach(child => { logs.push(child.val()); });
+        logs.reverse().forEach(n => {
+            container.innerHTML += `<div class="notice-item"><div style="font-size:11px; color:#94a3b8;">📅 ${n.date}</div><div style="margin-top:5px;">${n.msg}</div></div>`;
         });
     });
 
-    // 2. CHECK STATUS LOGIC (Detailed Table)
+    // 2. LIVE STOCK WITH WEIGHT LOGIC (MT & Qtl)
+    db.ref('lamps/inventory').on('value', snap => {
+        const container = document.getElementById('stock-display');
+        container.innerHTML = "";
+        if(!snap.exists()) {
+            container.innerHTML = "<tr><td colspan='2' style='text-align:center;'>डाटा उपलब्ध नहीं है</td></tr>";
+            return;
+        }
+        const data = snap.val();
+        const fertList = ["DAP", "UREA", "NPK", "POTASH"];
+        const seedList = ["MTU1010", "IR64", "राजेश्वरी", "स्वर्णा"];
+        const items = [...fertList, ...seedList];
+        
+        items.forEach(name => {
+            const it = data[name] || { opening:0, total_in:0, total_out:0, loss:0 };
+            const balBags = (parseFloat(it.opening)||0) + (parseFloat(it.total_in)||0) - (parseFloat(it.total_out)||0) - (parseFloat(it.loss)||0);
+            
+            if(balBags > 0 || data[name]) {
+                let displayWeight = "";
+                if (fertList.includes(name)) {
+                    let weightPerBag = (name === "UREA") ? 45 : 50;
+                    let metricTon = (balBags * weightPerBag) / 1000;
+                    displayWeight = metricTon.toFixed(3) + " MT";
+                } else {
+                    let weightPerBag = 30;
+                    let quintal = (balBags * weightPerBag) / 100;
+                    displayWeight = quintal.toFixed(2) + " Qtl";
+                }
+
+                container.innerHTML += `
+                    <tr>
+                        <td>${name}</td>
+                        <td style="text-align:right;"><span class="qty-badge">${displayWeight}</span></td>
+                    </tr>`;
+            }
+        });
+    });
+
+    // 3. CHECK STATUS & BATCH LOGIC
     async function checkStatus() {
         const acc = document.getElementById('acc_input').value.trim();
         if(!acc) return;
-        
-        swal({ title: "सर्च कर रहे हैं...", buttons: false });
-        try {
-            const fSnap = await db.ref('lamps/farmers/' + acc).once('value');
-            if(!fSnap.exists()) throw new Error("इस खाते की जानकारी नहीं मिली।");
-            const f = fSnap.val();
-            
-            // Updating Table
-            document.getElementById('res-name').innerText = f.name || '-';
-            document.getElementById('res-fname').innerText = f.fname || '-';
-            document.getElementById('res-caste').innerText = f.cat || '-'; // Assuming 'cat' is caste in DB
-            document.getElementById('res-vill').innerText = f.vill || '-';
+        swal({ title: "खोज रहे हैं...", buttons: false });
 
-            const lSnap = await db.ref('lamps/loans/' + acc).once('value');
-            let status = "समिति में लंबित";
-            if(lSnap.exists()) {
-                const loans = lSnap.val();
-                status = loans[Object.keys(loans).pop()].status || status;
+        try {
+            // Farmer info from lamps/farmers
+            const fSnap = await db.ref('lamps/farmers/' + acc).once('value');
+            if(!fSnap.exists()) throw new Error("रिकॉर्ड नहीं मिला। कृपया खाता नंबर जांचें।");
+            const f = fSnap.val();
+
+            // Batch info from lamps/generated_reports
+            const rSnap = await db.ref('lamps/generated_reports').once('value');
+            let batchStatus = "समिति में प्रक्रियाधीन"; 
+
+            if(rSnap.exists()) {
+                Object.values(rSnap.val()).forEach(report => {
+                    if(report.items && report.items.find(i => i.acc === acc)) {
+                        batchStatus = report.group_status || batchStatus;
+                    }
+                });
             }
 
-            const sBox = document.getElementById('res-status-box');
-            sBox.innerText = status;
+            // Updating Table with new fields
+            document.getElementById('res-name').innerText = f.name || '-';
+            document.getElementById('res-fname').innerText = f.fname || '-';
+            document.getElementById('res-vill').innerText = f.vill || '-';
+            document.getElementById('res-caste').innerText = f.caste || '-';
+            document.getElementById('res-cat').innerText = f.cat || '-';
+            document.getElementById('res-batch-status').innerText = batchStatus;
             
-            // Modern Colors
-            if(status === "ऋण वितरण पूर्ण") {
-                sBox.style.background = "#d1fae5"; sBox.style.color = "#065f46"; sBox.style.border = "2px solid #10b981";
-            } else if(status === "बैंक में लंबित") {
-                sBox.style.background = "#fef3c7"; sBox.style.color = "#92400e"; sBox.style.border = "2px solid #f59e0b";
+            const sBox = document.getElementById('res-status-box');
+            sBox.innerText = batchStatus;
+
+            if(batchStatus === "ऋण वितरण पूर्ण") {
+                sBox.style.background = "#d1fae5"; sBox.style.color = "#065f46"; sBox.style.border = "2px solid var(--success)";
+            } else if(batchStatus === "बैंक में प्रक्रियाधीन") {
+                sBox.style.background = "#fef3c7"; sBox.style.color = "#92400e"; sBox.style.border = "2px solid var(--warning)";
             } else {
-                sBox.style.background = "#fee2e2"; sBox.style.color = "#b91c1c"; sBox.style.border = "2px solid #ef4444";
+                sBox.style.background = "#fee2e2"; sBox.style.color = "#b91c1c"; sBox.style.border = "2px solid var(--danger)";
             }
 
             document.getElementById('result-area').style.display = "block";
             swal.close();
-        } catch (e) {
-            swal("सूचना", e.message, "error");
+        } catch (err) {
+            swal("Error", err.message, "error");
             document.getElementById('result-area').style.display = "none";
         }
     }
 </script>
-
 </body>
 </html>
